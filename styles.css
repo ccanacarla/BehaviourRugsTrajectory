@@ -1,0 +1,168 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap');
+
+/* --- Reset e Base --- */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Roboto', sans-serif;
+    color: #333;
+    background-color: #f4f4f4;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; /* Evita scroll na página inteira, usamos scroll interno */
+}
+
+/* --- Menu --- */
+#menu-container {
+    background-color: #1a1a2e;
+    padding: 10px 20px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+#menu-container button {
+    background: transparent;
+    border: 1px solid #4a4e69;
+    color: #e9ecef;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-family: 'Roboto', sans-serif;
+}
+
+#menu-container button:hover {
+    background-color: #162447;
+    border-color: #fff;
+}
+
+/* --- Container Principal --- */
+.container {
+    flex: 1;
+    width: 100%;
+    padding: 10px;
+    overflow: auto; /* Permite scroll se necessário nas outras views */
+    display: block;
+    position: relative;
+}
+
+/* --- Layout Específico para o Behavior Rug (Split View) --- */
+.rug-view-layout {
+    display: grid;
+    grid-template-columns: 3fr 1fr; 
+    gap: 10px;
+    
+    /* MUDANÇA: Defina uma altura fixa em relação à tela (ex: 75% da altura da tela) */
+    height: 75vh; 
+    
+    /* Opcional: ou use uma altura fixa em pixels se preferir */
+    /* height: 600px; */
+    
+    width: 100%;
+    overflow: hidden; /* Impede que o painel cresça além desse tamanho */
+}
+
+/* Garanta que o container interno acompanhe essa altura */
+#rug-panel {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    height: 100%; /* Ocupa toda a altura definida no pai (.rug-view-layout) */
+    overflow: hidden; /* Importante para o scroll funcionar nos filhos */
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+
+#glyph-panel {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    overflow-y: auto;
+}
+
+/* --- Estilos do Behavior Rug Interno --- */
+.behavior-rug-wrap {
+    width: 100%;
+    height: 100%;
+    display: grid;
+    grid-template-columns: auto 1fr auto; /* Labels | Gráfico | Legenda */
+    overflow: hidden;
+}
+
+.behavior-rug-left,
+.behavior-rug-right {
+    background: #fff;
+    z-index: 2;
+    overflow: hidden; /* Sem scroll, controlado via JS ou fixo */
+    
+}
+
+.behavior-rug-right {
+    
+    border-right: none;
+}
+
+.behavior-rug-center {
+    overflow: auto; /* Scroll principal */
+    position: relative;
+}
+
+/* Destaque da linha selecionada */
+.row-selected rect {
+    stroke: #333 !important;
+    stroke-width: 2px !important;
+}
+
+/* --- Estilos do Line Pins --- */
+.line-pins-scroll-wrapper {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+}
+
+/* Ajuste para quando o LinePins é usado no painel lateral (single view) */
+#glyph-panel .plot-container {
+    width: 100%; /* Ocupa largura total do painel lateral */
+    margin: 0;
+}
+
+.plot-container {
+    background: #fff;
+    border: 1px solid #eee;
+    border-radius: 8px;
+    padding: 10px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    text-align: center;
+}
+/* --- Estilos de Interação e Seleção --- */
+
+/* Quando a linha ESQUERDA (nomes) é selecionada */
+.l-row.selected rect {
+    fill: rgba(255, 203, 59, 0.3); /* Fundo amarelo suave no nome */
+}
+
+.l-row.selected text.label-id {
+    fill: #1b025b;      /* Muda a cor do texto do ID para vermelho/destaque */
+    font-weight: bold;  /* Deixa negrito */
+    font-size: 11px;    /* Aumenta levemente */
+}
+
+/* Hover: Efeito ao passar o mouse sobre o nome */
+.l-row:hover rect {
+    fill: rgba(191, 208, 230, 0.3); /* Cinza bem claro */
+}
