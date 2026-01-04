@@ -6,7 +6,6 @@ export const VISUALIZATION_CONFIG = {
   cellPadding: 1,
   baseGlyphColor: "#022fabff", // Main color for glyphs (e.g., triangles, circles)
   speedOpacity: { // Mapping of speed levels to opacity for glyphs
-    Parado: 0.1,
     Lento: 0.35,
     Medio: 0.65,
     Rápido: 1.0,
@@ -19,7 +18,7 @@ export const VISUALIZATION_CONFIG = {
   // Configuration specific to behaviourrug.js
   behaviourRug: {
     marginLeft: 140, // Left margin for the rug plot
-    marginTop: 40,   // Top margin for the rug plot
+    marginTop: 10,   // Top margin for the rug plot
     legendWidth: 200, // Width reserved for the legend
     highlightColor: "#ffeb3b", // Color for trajectory selection highlight
     highlightOpacity: 0.3,     // Opacity for trajectory selection highlight

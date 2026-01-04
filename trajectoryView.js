@@ -58,7 +58,11 @@ export function drawTrajectoryView(d, containerSelector, opts = {}) {
   const wrapper = container.append("div")
     .attr("class", "trajectory-view-wrapper")
     .style("width", "100%")
-    .style("padding", "10px");
+    .style("border-radius", "6px")
+    .style("margin-bottom", "10px")
+    .style("background", "#fff")
+    .style("border", "1px solid #ddd")
+    .style("padding", "0px");
 
   // ==================================================
   // 1) Controles
@@ -67,15 +71,22 @@ export function drawTrajectoryView(d, containerSelector, opts = {}) {
     .attr("class", "trajectory-controls")
     .style("margin-bottom", "10px")
     .style("display", "flex")
-    .style("gap", "4px")
+    .style("flex-direction", "column") // Stacked vertically
+    .style("gap", "8px")
     .style("font-size", "12px")
-    .style("background", "#fafafa")
+    .style("background", "#ccccccff")
     .style("padding", "8px")
-    .style("border-radius", "4px")
-    .style("border", "1px solid #eee")
-    .style("flex-wrap", "wrap");
+    .style("border-radius", "6px 6px 0px 0px")
+    .style("border", "1px 1px 1px 0px solid #ccc");
 
-  // --- Grupo A: tipo de trajetória ---
+  // Animation state
+  let isPlaying = false;
+  let animationId = null;
+  let currentPointIndex = 0;
+  let animationPoints = [];
+  let animXScale, animYScale;
+
+  // --- Grupo A: tipo de trajetória (Now Third) ---
   const trajGroup = controls.append("div")
     .style("display", "flex")
     .style("gap", "12px")
@@ -98,7 +109,7 @@ export function drawTrajectoryView(d, containerSelector, opts = {}) {
       .style("cursor", "pointer")
       .style("display", "flex")
       .style("align-items", "center")
-      .style("gap", "1px");
+      .style("gap", "4px");
 
     label.append("input")
       .attr("type", "radio")
@@ -107,6 +118,7 @@ export function drawTrajectoryView(d, containerSelector, opts = {}) {
       .property("checked", i === 0)
       .on("change", function () {
         if (this.checked) {
+          stopAnimation();
           currentKey = opt.key;
           updatePlot();
         }
@@ -115,7 +127,7 @@ export function drawTrajectoryView(d, containerSelector, opts = {}) {
     label.append("span").text(opt.label);
   });
 
-  // --- Grupo B: modo de escala (NOVO) ---
+  // --- Grupo B: modo de escala (Now Second) ---
   const scaleGroup = controls.append("div")
     .style("display", "flex")
     .style("gap", "12px")
@@ -125,9 +137,7 @@ export function drawTrajectoryView(d, containerSelector, opts = {}) {
     .style("font-weight", "bold")
     .text("Scale:");
 
-  // scaleMode: "auto" ou "fixed"
   let scaleMode = "auto";
-
   const scaleOptions = [
     { label: "Auto",  value: "auto" },
     { label: "Fixed",  value: "fixed" }
@@ -138,7 +148,7 @@ export function drawTrajectoryView(d, containerSelector, opts = {}) {
       .style("cursor", "pointer")
       .style("display", "flex")
       .style("align-items", "center")
-      .style("gap", "1px");
+      .style("gap", "4px");
 
     label.append("input")
       .attr("type", "radio")
@@ -147,6 +157,7 @@ export function drawTrajectoryView(d, containerSelector, opts = {}) {
       .property("checked", i === 0)
       .on("change", function () {
         if (this.checked) {
+          stopAnimation();
           scaleMode = opt.value;
           updatePlot();
         }
@@ -155,19 +166,50 @@ export function drawTrajectoryView(d, containerSelector, opts = {}) {
     label.append("span").text(opt.label);
   });
 
+  // --- Grupo C: Playback (Now First) ---
+  const playbackGroup = controls.append("div")
+    .style("display", "flex")
+    .style("gap", "8px")
+    .style("align-items", "center");
+
+  const playBtn = playbackGroup.append("button")
+      .text("Play")
+      .style("cursor", "pointer")
+      .style("padding", "2px 6px")
+      .style("font-size", "10px");
+
+  const timelineSlider = playbackGroup.append("input")
+      .attr("type", "range")
+      .attr("min", 0)
+      .attr("max", 100)
+      .attr("value", 0)
+      .style("flex-grow", "1")
+      .style("cursor", "pointer");
+  
+  playBtn.on("click", () => {
+      if (isPlaying) pauseAnimation();
+      else startAnimation();
+  });
+
+  timelineSlider.on("input", function() {
+      const val = +this.value;
+      if (!animationPoints.length) return;
+      currentPointIndex = val;
+      updateTrackerPosition();
+  });
+
   // ==================================================
   // 2) Área do Plot
   // ==================================================
   const width = 420;
   const height = 220;
-  const margin = { top: 0, right: 10, bottom: 0, left: 45 };
+  const margin = { top: 0, right: 10, bottom: 10, left: 45 };
 
   const svg = wrapper.append("svg")
     .attr("width", "100%")
     .attr("height", height)
     .attr("viewBox", `0 0 ${width} ${height}`)
-    .style("background", "#fff")
-    .style("border", "1px solid #ccc");
+    .style("background", "#fff");
 
   const g = svg.append("g")
     .attr("transform", `translate(${margin.left},${margin.top})`);
@@ -195,10 +237,71 @@ export function drawTrajectoryView(d, containerSelector, opts = {}) {
     .attr("fill", "red")
     .style("display", "none");
 
+  // Tracker for animation
+  const tracker = g.append("circle")
+    .attr("r", 5)
+    .attr("fill", "orange")
+    .attr("stroke", "white")
+    .attr("stroke-width", 1.5)
+    .style("display", "none");
+
   // ==================================================
   // 3) Atualização do Plot
   // ==================================================
+  function pauseAnimation() {
+      isPlaying = false;
+      playBtn.text("Play");
+      if (animationId) cancelAnimationFrame(animationId);
+      animationId = null;
+  }
+
+  function stopAnimation() {
+      pauseAnimation();
+      currentPointIndex = 0;
+      timelineSlider.property("value", 0);
+      tracker.style("display", "none");
+  }
+
+  function startAnimation() {
+      if (!animationPoints.length) return;
+      isPlaying = true;
+      playBtn.text("Pause");
+      tracker.style("display", null);
+      
+      // If at end, restart
+      if (currentPointIndex >= animationPoints.length - 1) {
+          currentPointIndex = 0;
+      }
+      animate();
+  }
+
+  function updateTrackerPosition() {
+      const p = animationPoints[currentPointIndex];
+      if (p && animXScale && animYScale) {
+          tracker
+             .attr("cx", animXScale(p[0]))
+             .attr("cy", animYScale(p[1]));
+      }
+      // Sync slider if not dragging (simple sync)
+      timelineSlider.property("value", currentPointIndex);
+  }
+
+  function animate() {
+      if (!isPlaying) return;
+      
+      updateTrackerPosition();
+      currentPointIndex++;
+      
+      if (currentPointIndex < animationPoints.length) {
+          animationId = requestAnimationFrame(animate);
+      } else {
+          pauseAnimation(); // End of playback
+      }
+  }
+
   function updatePlot() {
+    stopAnimation(); // Reset animation on data update
+
     const rawString = row[currentKey];
 
     if (!rawString) {
@@ -211,6 +314,10 @@ export function drawTrajectoryView(d, containerSelector, opts = {}) {
     }
 
     const points = parseTrajectoryData(rawString);
+    animationPoints = points; // Store for animation
+    
+    // Update slider max
+    timelineSlider.attr("max", points.length > 0 ? points.length - 1 : 0);
 
     if (!points.length) {
       console.warn("Trajetória vazia ou inválida:", row.trajectory_id, currentKey);
@@ -245,6 +352,10 @@ export function drawTrajectoryView(d, containerSelector, opts = {}) {
     const yScale = d3.scaleLinear()
       .domain(yDomain)
       .range([innerH, 0]);
+
+    // Store scales for animation
+    animXScale = xScale;
+    animYScale = yScale;
 
     const line = d3.line()
       .x(p => xScale(p[0]))

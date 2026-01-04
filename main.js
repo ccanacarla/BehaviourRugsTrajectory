@@ -2,14 +2,21 @@
 import { linePins } from './linePins.js';
 import { drawBehaviorRug } from './behaviourrug.js';
 import { drawTrajectoryView } from './trajectoryView.js';
+import { eventManager } from './events.js';
+import { drawMarkovMatrices } from './matrixMarkov.js';
 
 const container = document.querySelector('.container');
 let fullData; // Renomeei para garantir que tenhamos sempre o original
 
+// Subscribe to trajectory selection
+eventManager.subscribe('TRAJECTORY_SELECTED', ({ trajectory, options }) => {
+    showGlyphForTrajectory(trajectory, options);
+});
+
 async function main() {
     fullData = await d3.csv("outputs/symbolic.csv");
     // Inicia com o Heatmap para dar a visão geral primeiro (sugestão de fluxo)
-    showClusterHeatmap(); 
+    showBehaviorRug(); 
 }
 
 function clearContainer() {
@@ -52,7 +59,7 @@ function showBehaviorRug(dataToRender = null, title = null) {
             <div style="flex:1; display:grid; grid-template-columns: 3fr 1fr; gap:10px; overflow:hidden;">
                 <div id="rug-panel"></div>
                 <div id="glyph-panel">
-                    <div style="text-align:center; margin-top: 50%; color:#888;">
+                    <div style="text-align:center; margin-top: 50%; ">
                         <p>Selecione uma trajetória</p>
                     </div>
                 </div>
@@ -70,12 +77,11 @@ function showBehaviorRug(dataToRender = null, title = null) {
     rugPanel.style.border = "1px solid #ddd";
 
     const glyphPanel = document.getElementById('glyph-panel');
-    glyphPanel.style.background = "#fff";
+    glyphPanel.style.background = "transparent";
     glyphPanel.style.overflowY = "auto";
-    glyphPanel.style.border = "1px solid #ddd";
-    glyphPanel.style.padding = "10px";
+    glyphPanel.style.padding = "0px"; // Removed padding
 
-    drawBehaviorRug(dataset, '#rug-panel', showGlyphForTrajectory);
+    drawBehaviorRug(dataset, '#rug-panel');
 
     // Botão para limpar filtro
     const btn = document.getElementById('clear-filter-btn');
@@ -85,19 +91,25 @@ function showBehaviorRug(dataToRender = null, title = null) {
 }
 
 function showGlyphForTrajectory(traj, opts) {
-    // ... (mesmo código anterior) ...
     const panel = document.getElementById('glyph-panel');
     panel.innerHTML = '';
+    
+    // Configura o painel para empilhamento vertical limpo
+    panel.style.display = 'flex';
+    panel.style.flexDirection = 'column';
+    panel.style.gap = '0';
+
     const trajDiv = document.createElement('div');
     trajDiv.id = 'trajectory-viz-container';
     trajDiv.style.width = '100%';
-    trajDiv.style.height = '300px'; // Altura fixa ajuda
+    trajDiv.style.flexShrink = '0'; // Evita que encolha
     panel.appendChild(trajDiv);
     drawTrajectoryView(traj, '#trajectory-viz-container', opts);
     
     const glyphDiv = document.createElement('div');
     glyphDiv.id = 'glyph-detail-container';
     glyphDiv.style.width = '100%';
+    glyphDiv.style.flexShrink = '0';
     panel.appendChild(glyphDiv);
     linePins([traj], '#glyph-detail-container');
 }
@@ -118,10 +130,5 @@ function showMarkovAnalysis() {
 
     drawMarkovMatrices(fullData, "#markov-container");
 }
-
-document.getElementById('markov-btn').addEventListener('click', showMarkovAnalysis);
-document.getElementById('line-pins-btn').addEventListener('click', showLinePins);
-document.getElementById('behavior-rug-btn').addEventListener('click', () => showBehaviorRug());
-
 
 main();

@@ -1,6 +1,7 @@
 import { VISUALIZATION_CONFIG, SPEED_STRINGS, DIRECTION_STRINGS } from './config.js';
+import { eventManager } from './events.js';
 
-export function drawBehaviorRug(data, containerSelector, onTrajectoryClick = null) {
+export function drawBehaviorRug(data, containerSelector) {
   const container = d3.select(containerSelector);
   container.selectAll("*").remove();
 
@@ -48,7 +49,7 @@ export function drawBehaviorRug(data, containerSelector, onTrajectoryClick = nul
   const controlsDiv = container.append("div")
     .attr("class", "rug-controls")
     .style("padding", "10px")
-    .style("background", "#f0f0f0")
+    .style("background", "#ccccccff")
     .style("border-bottom", "1px solid #ccc")
     .style("display", "flex")
     .style("align-items", "center")
@@ -135,8 +136,28 @@ export function drawBehaviorRug(data, containerSelector, onTrajectoryClick = nul
       render();
   });
 
+  // Legend control
+  const legendLabel = controlsDiv.append("label")
+    .style("font-size", "12px")
+    .style("cursor", "pointer")
+    .style("display", "flex")
+    .style("align-items", "center")
+    .style("gap", "4px")
+    .style("margin-left", "auto") // Push to right
+    .style("margin-right", "10px");
+
+  const legendInput = legendLabel.append("input")
+      .attr("type", "checkbox")
+      .property("checked", false); // Default hidden
+
+  legendLabel.append("span").text("Show Legend");
+
+  legendInput.on("change", function() {
+      toggleLegend(this.checked);
+  });
+
   // ==================================================
-  // 3) Estrutura 3 painéis (Left | Center | Right) + Scroll
+  // 3) Estrutura painéis (Left | Center) + Floating Legend
   // ==================================================
   const wrap = container.append("div")
     .attr("class", "behavior-rug-wrap")
@@ -144,7 +165,7 @@ export function drawBehaviorRug(data, containerSelector, onTrajectoryClick = nul
     .style("position", "relative")
     .style("overflow", "hidden")
     .style("display", "grid")
-    .style("grid-template-columns", "auto 1fr auto")
+    .style("grid-template-columns", "auto 1fr") // Only 2 columns
     .style("min-height", "0");
 
   const leftDiv = wrap.append("div")
@@ -156,13 +177,32 @@ export function drawBehaviorRug(data, containerSelector, onTrajectoryClick = nul
     .style("overflow", "auto")
     .style("min-height", "0");
 
+  // Floating Legend
   const rightDiv = wrap.append("div")
     .attr("class", "behavior-rug-right")
-    .style("min-height", "0");
+    .style("position", "absolute")
+    .style("right", "20px")
+    .style("top", "20px")
+    .style("height", "230px")
+    .style("width", "170px")
+    .style("z-index", "100")
+    .style("background", "rgba(255, 255, 255, 0.95)")
+    .style("border", "1px solid #ddd")
+    .style("border-radius", "6px")
+    .style("box-shadow", "0 4px 12px rgba(0,0,0,0.15)")
+    .style("padding", "10px")
+    .style("display", "none") // Default hidden
+    .style("max-height", "80%")
+    .style("overflow-y", "hidden")
+    .style("pointer-events", "auto");
 
   const leftSvg = leftDiv.append("svg").attr("class", "behavior-rug-svg");
   const centerSvg = centerDiv.append("svg").attr("class", "behavior-rug-svg");
   const rightSvg = rightDiv.append("svg").attr("class", "behavior-rug-svg");
+
+  function toggleLegend(show) {
+      rightDiv.style("display", show ? "block" : "none");
+  }
 
   // Scroll sync: Left acompanha Center no scroll vertical
   const centerNode = centerDiv.node();
@@ -289,10 +329,14 @@ export function drawBehaviorRug(data, containerSelector, onTrajectoryClick = nul
     centerSvg.selectAll(".row").filter(d => d.id === id).classed("selected", true);
 
     const datum = sequences.find(s => s.id === id);
-    if (onTrajectoryClick && datum) {
+    if (datum) {
       const lento = getLentoIndices(datum.seq);
       const turns = getTurnIndices(datum.seq);
-      onTrajectoryClick(datum, { highlightLentoIndices: lento, highlightTurnIndices: turns });
+      // Notify observers instead of calling callback
+      eventManager.notify('TRAJECTORY_SELECTED', { 
+        trajectory: datum, 
+        options: { highlightLentoIndices: lento, highlightTurnIndices: turns } 
+      });
     }
   }
 
