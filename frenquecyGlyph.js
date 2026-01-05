@@ -1,6 +1,6 @@
 import { VISUALIZATION_CONFIG, SPEED_STRINGS, DIRECTION_STRINGS } from './config.js';
 
-export function linePins(data, targetSelector = ".container") {
+export function frequencyGlyph(data, targetSelector = ".container") {
   const container = d3.select(targetSelector);
   container.selectAll("*").remove();
 
@@ -17,7 +17,7 @@ export function linePins(data, targetSelector = ".container") {
       .style("width", "100%");
   } else {
     contentWrapper = container.append("div")
-      .attr("class", "line-pins-scroll-wrapper")
+      .attr("class", "frenquency-glyph-scroll-wrapper")
       .style("width", "100%")
       .style("max-height", "80vh") // Mantido apenas para a visualização "Grid completa"
       .style("overflow-y", "auto");
@@ -26,9 +26,9 @@ export function linePins(data, targetSelector = ".container") {
   // ==================================================
   // Configuração
   // ==================================================
-  const size = VISUALIZATION_CONFIG.linePins.glyphSize;
+  const size = VISUALIZATION_CONFIG.frenquencyGlyph.glyphSize;
   const half = size / 2;
-  const step = half / VISUALIZATION_CONFIG.linePins.glyphLevels;
+  const step = half / VISUALIZATION_CONFIG.frenquencyGlyph.glyphLevels;
   const baseColor = VISUALIZATION_CONFIG.baseGlyphColor;
 
   const speedMap = {
@@ -148,8 +148,8 @@ export function linePins(data, targetSelector = ".container") {
     }
 
     // Grid Overlay (Linhas)
-    const gridColor = VISUALIZATION_CONFIG.linePins.gridLineColor;
-    const gridW = VISUALIZATION_CONFIG.linePins.gridLineWidth;
+    const gridColor = VISUALIZATION_CONFIG.frenquencyGlyph.gridLineColor;
+    const gridW = VISUALIZATION_CONFIG.frenquencyGlyph.gridLineWidth;
     
     // Diagonais
     g.append("line").attr("x1", -half).attr("y1", -half).attr("x2", half).attr("y2", half).attr("stroke", gridColor).attr("stroke-width", gridW);

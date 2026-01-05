@@ -82,8 +82,7 @@ body {
 }
 
 #glyph-panel {
-    background: #fff;
-    border: 1px solid #ddd;
+    
     border-radius: 8px;
     padding: 10px;
     display: flex;
@@ -127,7 +126,7 @@ body {
 }
 
 /* --- Estilos do Line Pins --- */
-.line-pins-scroll-wrapper {
+.frenquency-glyph-scroll-wrapper {
     width: 100%;
     display: flex;
     flex-wrap: wrap;

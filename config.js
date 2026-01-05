@@ -25,8 +25,8 @@ export const VISUALIZATION_CONFIG = {
     svgBorderColor: "#ccc",    // Border color for the main SVG container
   },
 
-  // Configuration specific to linePins.js
-  linePins: {
+  // Configuration specific to frenquencyGlyph.js
+  frenquencyGlyph: {
     glyphSize: 160,          // Overall size of the aggregate glyph square
     glyphLevels: 4,          // Number of speed levels (including Parado)
     gridLineColor: "#fafafaff",   // Color for internal grid lines (diagonals, concentric squares)

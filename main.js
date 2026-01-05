@@ -1,9 +1,9 @@
 // main.js
-import { linePins } from './linePins.js';
+import { frequencyGlyph } from './frenquecyGlyph.js';
 import { drawBehaviorRug } from './behaviourrug.js';
-import { drawTrajectoryView } from './trajectoryView.js';
+import { drawTrajectoryView } from './trajectory.js';
 import { eventManager } from './events.js';
-import { drawMarkovMatrices } from './matrixMarkov.js';
+import { drawclusterMatrices } from './cluster.js';
 
 const container = document.querySelector('.container');
 let fullData; // Renomeei para garantir que tenhamos sempre o original
@@ -11,6 +11,28 @@ let fullData; // Renomeei para garantir que tenhamos sempre o original
 // Subscribe to trajectory selection
 eventManager.subscribe('TRAJECTORY_SELECTED', ({ trajectory, options }) => {
     showGlyphForTrajectory(trajectory, options);
+});
+
+// Subscribe to cluster selection (Multi)
+eventManager.subscribe('CLUSTERS_CHANGED', ({ clusterIds }) => {
+    if (!fullData) return;
+    
+    let filtered = fullData;
+    let title = null;
+
+    if (clusterIds && clusterIds.length > 0) {
+        // Convert to strings for safe comparison if needed, though usually consistent
+        const setIds = new Set(clusterIds.map(String));
+        filtered = fullData.filter(d => setIds.has(String(d.clusterIds ?? d.cluster)));
+        
+        if (clusterIds.length <= 3) {
+            title = `Clusters: ${clusterIds.join(", ")}`;
+        } else {
+            title = `${clusterIds.length} Clusters Selecionados`;
+        }
+    }
+
+    updateRugPanel(filtered, title);
 });
 
 async function main() {
@@ -27,7 +49,7 @@ function clearContainer() {
 
 function showLinePins() {
     clearContainer();
-    linePins(fullData, '.container');
+    frequencyGlyph(fullData, '.container');
 }
 
 /**
@@ -36,27 +58,23 @@ function showLinePins() {
  * @param {String} [title] - Opcional. Título para contexto (ex: "Cluster 3").
  */
 function showBehaviorRug(dataToRender = null, title = null) {
+    // If container already has the layout, just update
+    if (document.getElementById('rug-panel') && document.getElementById('cluster-panel')) {
+        updateRugPanel(dataToRender, title);
+        return;
+    }
+
     clearContainer();
     
-    // Se não passar dados filtrados, usa tudo
     const dataset = dataToRender || fullData;
-
     container.classList.add('rug-view-layout');
     container.style.overflow = 'hidden'; 
 
-    // Adicionei um header pequeno para indicar se estamos filtrando
-    let headerHtml = '';
-    if (title) {
-        headerHtml = `<div style="padding: 5px 10px; background: #fffbe6; border-bottom: 1px solid #ddd; font-size: 12px; display: flex; justify-content: space-between; align-items: center;">
-                        <span>Visualizando filtro: <strong>${title}</strong> (${dataset.length} trajetórias)</span>
-                        <button id="clear-filter-btn" style="cursor:pointer; font-size:10px;">Remover Filtro</button>
-                      </div>`;
-    }
-
     container.innerHTML = `
         <div style="display:flex; flex-direction:column; height:100%;">
-            ${headerHtml}
-            <div style="flex:1; display:grid; grid-template-columns: 3fr 1fr; gap:10px; overflow:hidden;">
+            <div id="rug-header"></div>
+            <div style="flex:1; display:grid; grid-template-columns: 0.4fr 3.6fr 1fr; gap:10px; overflow:hidden;">
+                <div id="cluster-panel"></div>
                 <div id="rug-panel"></div>
                 <div id="glyph-panel">
                     <div style="text-align:center; margin-top: 50%; ">
@@ -68,26 +86,50 @@ function showBehaviorRug(dataToRender = null, title = null) {
     `;
 
     // Remove estilos inline do HTML anterior para usar o grid interno novo
-    // O container principal não é mais grid direto, mas sim o div interno
     container.classList.remove('rug-view-layout'); 
-    // Ajuste CSS necessário para esse novo layout interno:
+    
+    const clusterPanel = document.getElementById('cluster-panel');
+    clusterPanel.style.background = "#fff";
+    clusterPanel.style.overflowY = "auto";
+    clusterPanel.style.borderRadius = "8px";
+    clusterPanel.style.border = "1px solid #ddd";
+    
     const rugPanel = document.getElementById('rug-panel');
     rugPanel.style.background = "#fff";
-    rugPanel.style.overflow = "hidden";
+    rugPanel.style.borderRadius = "8px";
     rugPanel.style.border = "1px solid #ddd";
+    rugPanel.style.overflow = "hidden";
 
     const glyphPanel = document.getElementById('glyph-panel');
     glyphPanel.style.background = "transparent";
     glyphPanel.style.overflowY = "auto";
-    glyphPanel.style.padding = "0px"; // Removed padding
+    //glyphPanel.style.border = "1px solid #ddd";
+    glyphPanel.style.padding = "0px"; 
 
-    drawBehaviorRug(dataset, '#rug-panel');
+    // Initial population
+    drawclusterMatrices(fullData, '#cluster-panel'); // Always full data for Markov? Or filtered? Usually full for context.
+    updateRugPanel(dataset, title);
+}
 
-    // Botão para limpar filtro
-    const btn = document.getElementById('clear-filter-btn');
-    if (btn) {
-        btn.onclick = () => showBehaviorRug(null, null); // Reseta
+function updateRugPanel(dataset, title) {
+    const data = dataset || fullData;
+    const header = document.getElementById('rug-header');
+    
+    if (title) {
+        header.innerHTML = `<div style="padding: 5px 10px; margin: 0 0 10px 0; background: #e0eff3ff; border-bottom: 1px solid #ddd; font-size: 12px; display: flex; justify-content: space-between; align-items: center;">
+                        <span>Visualizando filtro: <strong>${title}</strong> (${data.length} trajetórias)</span>
+                        <button id="clear-filter-btn" style="cursor:pointer; font-size:10px;">Remover Filtro</button>
+                      </div>`;
+        
+        document.getElementById('clear-filter-btn').onclick = () => {
+            updateRugPanel(null, null);
+            eventManager.notify('RESET_FILTERS');
+        };
+    } else {
+        header.innerHTML = '';
     }
+
+    drawBehaviorRug(data, '#rug-panel');
 }
 
 function showGlyphForTrajectory(traj, opts) {
@@ -111,10 +153,10 @@ function showGlyphForTrajectory(traj, opts) {
     glyphDiv.style.width = '100%';
     glyphDiv.style.flexShrink = '0';
     panel.appendChild(glyphDiv);
-    linePins([traj], '#glyph-detail-container');
+    frequencyGlyph([traj], '#glyph-detail-container');
 }
 
-function showMarkovAnalysis() {
+function showclusterAnalysis() {
     clearContainer();
     
     const header = document.createElement("div");
@@ -125,10 +167,10 @@ function showMarkovAnalysis() {
     container.appendChild(header);
 
     const gridDiv = document.createElement("div");
-    gridDiv.id = "markov-container";
+    gridDiv.id = "cluster-container";
     container.appendChild(gridDiv);
 
-    drawMarkovMatrices(fullData, "#markov-container");
+    drawclusterMatrices(fullData, "#cluster-container");
 }
 
 main();

@@ -536,7 +536,7 @@ export function drawBehaviorRug(data, containerSelector) {
     const legCX = legSize / 2;
     const legCY = legSize / 2;
 
-    const legStroke = VISUALIZATION_CONFIG.linePins?.gridLineColor || "#999";
+    const legStroke = VISUALIZATION_CONFIG.frenquencyGlyph?.gridLineColor || "#999";
 
     // Direction (usa a cor base, já que direção não é velocidade)
     const gDir = legend.append("g").attr("transform", `translate(20, ${legDirY})`);
