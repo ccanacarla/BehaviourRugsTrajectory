@@ -34,7 +34,6 @@ body {
     padding: 8px 16px;
     border-radius: 4px;
     cursor: pointer;
-    transition: all 0.3s;
     font-family: 'Roboto', sans-serif;
 }
 
@@ -120,10 +119,25 @@ body {
 }
 
 /* Destaque da linha selecionada */
-.row-selected rect {
-    stroke: #333 !important;
-    stroke-width: 2px !important;
+.row-hover rect {
+    fill: rgba(42, 143, 244, 0.2);
+    stroke-width: 1.2px;
 }
+
+.row-selected rect {
+    fill: #2ECC7144;
+   
+}
+
+/* Emphasis on glyphs when hovered/selected */
+.row-hover path,
+.row-selected path {
+    opacity: 1;
+    transform-box: fill-box;
+    transform-origin: 50% 50%;
+}
+.row-hover path { transform: scale(1.02); }
+.row-selected path { transform: scale(1.04); }
 
 /* --- Estilos do Line Pins --- */
 .frenquency-glyph-scroll-wrapper {
@@ -142,26 +156,34 @@ body {
 
 .plot-container {
     background: #fff;
-    border: 1px solid #eee;
+    border: 1px solid #ddd;
     border-radius: 8px;
     padding: 10px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     text-align: center;
 }
 /* --- Estilos de Interação e Seleção --- */
 
 /* Quando a linha ESQUERDA (nomes) é selecionada */
+
 .l-row.selected rect {
-    fill: rgba(255, 203, 59, 0.3); /* Fundo amarelo suave no nome */
+    fill: #2ECC7144;
 }
 
 .l-row.selected text.label-id {
-    fill: #1b025b;      /* Muda a cor do texto do ID para vermelho/destaque */
-    font-weight: bold;  /* Deixa negrito */
-    font-size: 11px;    /* Aumenta levemente */
+    fill: #1b025b;      /* Cor de destaque mais harmoniosa */
+    font-weight: 700;
+    font-size: 11px;
 }
 
 /* Hover: Efeito ao passar o mouse sobre o nome */
-.l-row:hover rect {
-    fill: rgba(191, 208, 230, 0.3); /* Cinza bem claro */
+.l-row:hover rect,
+.l-row.hovered rect {
+    fill: rgba(42, 143, 244, 0.2);
+    
+}
+
+.l-row.hovered text.label-id {
+    fill: #215b8a;
+    font-weight: 700;
+    font-size: 11px;
 }

@@ -4,14 +4,15 @@ export const VISUALIZATION_CONFIG = {
   // Common constants for glyphs and cell rendering
   cellSize: 12,
   cellPadding: 1,
-  baseGlyphColor: "#022fabff", // Main color for glyphs (e.g., triangles, circles)
+  baseGlyphColor: "#083bbcff", // Main color for glyphs (e.g., triangles, circles)
   speedOpacity: { // Mapping of speed levels to opacity for glyphs
+    Muito_Lento: 0,
     Lento: 0.35,
     Medio: 0.65,
-    Rápido: 1.0,
-    Rapido: 1.0, // Alias for Rápido
+    Rapido: 0.85,
+    Muito_Rapido: 1.0,
   },
-  cellBackgroundColor: "#ecebebff", // Light gray background for individual cells/regions
+  cellBackgroundColor: "#f3f1f1ff", // Light gray background for individual cells/regions
   cellBorderColor: "#ffffff",     // White border for individual cells/regions
   cellBorderWidth: 1,
 

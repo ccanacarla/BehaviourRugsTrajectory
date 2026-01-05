@@ -106,15 +106,15 @@ export function drawBehaviorRug(data, containerSelector) {
     .style("display", "flex")
     .style("align-items", "center")
     .style("gap", "4px");
-  
+
   const motifInput = motifLabel.append("input")
-      .attr("type", "checkbox");
+    .attr("type", "checkbox");
 
-  motifLabel.append("span").text("Motif: Muito Lento (k=3)");
+  motifLabel.append("span").text("Motif: Very_Slow (k=3)");
 
-  motifInput.on("change", function() {
-      showLentoMotif = this.checked;
-      render();
+  motifInput.on("change", function () {
+    showLentoMotif = this.checked;
+    render();
   });
 
   // Motif control: Direction Change
@@ -125,15 +125,15 @@ export function drawBehaviorRug(data, containerSelector) {
     .style("align-items", "center")
     .style("gap", "4px")
     .style("margin-left", "10px");
-  
+
   const motifDirInput = motifDirLabel.append("input")
-      .attr("type", "checkbox");
+    .attr("type", "checkbox");
 
   motifDirLabel.append("span").text("Motif: Abrupt Turn");
 
-  motifDirInput.on("change", function() {
-      showDirectionChangeMotif = this.checked;
-      render();
+  motifDirInput.on("change", function () {
+    showDirectionChangeMotif = this.checked;
+    render();
   });
 
   // Legend control
@@ -147,13 +147,13 @@ export function drawBehaviorRug(data, containerSelector) {
     .style("margin-right", "10px");
 
   const legendInput = legendLabel.append("input")
-      .attr("type", "checkbox")
-      .property("checked", false); // Default hidden
+    .attr("type", "checkbox")
+    .property("checked", false); // Default hidden
 
   legendLabel.append("span").text("Show Legend");
 
-  legendInput.on("change", function() {
-      toggleLegend(this.checked);
+  legendInput.on("change", function () {
+    toggleLegend(this.checked);
   });
 
   // ==================================================
@@ -170,6 +170,7 @@ export function drawBehaviorRug(data, containerSelector) {
 
   const leftDiv = wrap.append("div")
     .attr("class", "behavior-rug-left")
+    .style("overflow-y", "auto")
     .style("min-height", "0");
 
   const centerDiv = wrap.append("div")
@@ -201,14 +202,31 @@ export function drawBehaviorRug(data, containerSelector) {
   const rightSvg = rightDiv.append("svg").attr("class", "behavior-rug-svg");
 
   function toggleLegend(show) {
-      rightDiv.style("display", show ? "block" : "none");
+    rightDiv.style("display", show ? "block" : "none");
   }
 
-  // Scroll sync: Left acompanha Center no scroll vertical
   const centerNode = centerDiv.node();
   const leftNode = leftDiv.node();
+
+  let isSyncingCenter = false;
+  let isSyncingLeft = false;
+
+  // Center → Left
   centerNode.addEventListener("scroll", () => {
+    if (isSyncingCenter) return;
+
+    isSyncingLeft = true;
     leftNode.scrollTop = centerNode.scrollTop;
+    isSyncingLeft = false;
+  });
+
+  // Left → Center
+  leftNode.addEventListener("scroll", () => {
+    if (isSyncingLeft) return;
+
+    isSyncingCenter = true;
+    centerNode.scrollTop = leftNode.scrollTop;
+    isSyncingCenter = false;
   });
 
   // ==================================================
@@ -231,10 +249,10 @@ export function drawBehaviorRug(data, containerSelector) {
     const t = normalizeToken(symbol);
 
     if (t.includes("muito_rapido") || t.includes("muito-rapido") || t.includes("muitorapido")) return "Muito_Rapido";
-    if (t.includes("muito_lento")  || t.includes("muito-lento")  || t.includes("muitolento"))  return "Muito_Lento";
+    if (t.includes("muito_lento") || t.includes("muito-lento") || t.includes("muitolento")) return "Muito_Lento";
 
-    if (t.includes(normalizeToken(SPEED_STRINGS?.LENTO  ?? "lento")))  return "Lento";
-    if (t.includes(normalizeToken(SPEED_STRINGS?.MEDIO  ?? "medio")))  return "Medio";
+    if (t.includes(normalizeToken(SPEED_STRINGS?.LENTO ?? "lento"))) return "Lento";
+    if (t.includes(normalizeToken(SPEED_STRINGS?.MEDIO ?? "medio"))) return "Medio";
 
     if (
       t.includes(normalizeToken(SPEED_STRINGS?.RAPIDO ?? "rapido")) ||
@@ -258,7 +276,7 @@ export function drawBehaviorRug(data, containerSelector) {
    * Estratégia: mistura a cor base com branco (claro) em diferentes intensidades.
    * Você controla os "stops" pela posição (0..1).
    */
-  const baseColor = VISUALIZATION_CONFIG.baseGlyphColor || "#022fab";
+  const baseColor = VISUALIZATION_CONFIG.baseGlyphColor || "#164773";
   const mixToWhite = (t) => d3.interpolateRgb("#ffffff", baseColor)(t);
 
   // Ordem claro -> escuro
@@ -267,11 +285,11 @@ export function drawBehaviorRug(data, containerSelector) {
   // Stops (0 = branco, 1 = baseColor). Ajuste livre.
   // Aqui: Muito_Lento quase branco; Muito_Rapido quase baseColor.
   const SPEED_T = {
-    Muito_Lento: 0.25,
-    Lento: 0.45,
-    Medio: 0.65,
-    Rapido: 0.82,
-    Muito_Rapido: 0.95,
+    Muito_Lento: 0.2,
+    Lento: 0.4,
+    Medio: 0.6,
+    Rapido: 0.8,
+    Muito_Rapido: 1.0,
   };
 
   function colorForSpeed(speed) {
@@ -305,11 +323,11 @@ export function drawBehaviorRug(data, containerSelector) {
     if (showDirectionChangeMotif) {
       for (let i = 0; i < seq.length - 1; i++) {
         const curr = seq[i];
-        const next = seq[i+1];
+        const next = seq[i + 1];
         if (curr && !curr.empty && next && !next.empty && curr.dir && next.dir) {
-          if ((curr.dir == "N" && next.dir == "S")|| (curr.dir == "S" && next.dir == "N") || (curr.dir == "E" && next.dir == "W") || (curr.dir == "W" && next.dir == "E")) {
-             highlightIndices.add(i);
-             highlightIndices.add(i+1);
+          if ((curr.dir == "N" && next.dir == "S") || (curr.dir == "S" && next.dir == "N") || (curr.dir == "E" && next.dir == "W") || (curr.dir == "W" && next.dir == "E")) {
+            highlightIndices.add(i);
+            highlightIndices.add(i + 1);
           }
         }
       }
@@ -320,22 +338,24 @@ export function drawBehaviorRug(data, containerSelector) {
   function highlightRow(id) {
     selectedTrajectoryId = id;
 
-    leftSvg.selectAll(".l-row").classed("selected", false);
-    centerSvg.selectAll(".row").classed("selected", false);
+    // Clear previous selection and temporary hover states
+    leftSvg.selectAll(".l-row").classed("selected", false).classed("hovered", false);
+    centerSvg.selectAll(".row").classed("row-selected", false).classed("row-hover", false);
 
     if (!id) return;
 
-    leftSvg.selectAll(".l-row").filter(d => d.id === id).classed("selected", true);
-    centerSvg.selectAll(".row").filter(d => d.id === id).classed("selected", true);
+    // Apply persistent selection on left and center
+    leftSvg.selectAll(".l-row").filter(d => d.id === id).classed("selected", true).classed("hovered", false);
+    centerSvg.selectAll(".row").filter(d => d.id === id).classed("row-selected", true).classed("row-hover", false);
 
     const datum = sequences.find(s => s.id === id);
     if (datum) {
       const lento = getLentoIndices(datum.seq);
       const turns = getTurnIndices(datum.seq);
       // Notify observers instead of calling callback
-      eventManager.notify('TRAJECTORY_SELECTED', { 
-        trajectory: datum, 
-        options: { highlightLentoIndices: lento, highlightTurnIndices: turns } 
+      eventManager.notify('TRAJECTORY_SELECTED', {
+        trajectory: datum,
+        options: { highlightLentoIndices: lento, highlightTurnIndices: turns }
       });
     }
   }
@@ -364,10 +384,9 @@ export function drawBehaviorRug(data, containerSelector) {
             });
           }
         }
-      } catch (e) {}
+      } catch (e) { }
 
-      const clusterVal = d.cluster_markov ?? d.cluster;
-
+      const clusterVal = d.cluster;
       return {
         id: d.trajectory_id,
         trajectory_id: d.trajectory_id,
@@ -461,6 +480,19 @@ export function drawBehaviorRug(data, containerSelector) {
       .attr("class", "row")
       .attr("transform", (d, i) => `translate(0, ${i * rowHeight})`)
       .style("cursor", "pointer")
+      .on("mouseenter", function (e, d) {
+        const row = d3.select(this);
+        // apply temporary hover class unless it's already the persistent selection
+        if (selectedTrajectoryId !== d.id) row.classed("row-hover", true);
+        // also highlight left label row on hover (temporary)
+        leftSvg.selectAll(".l-row").filter(ld => ld.id === d.id).classed("hovered", true);
+      })
+      .on("mouseleave", function (e, d) {
+        const row = d3.select(this);
+        // remove hover class unless persistently selected
+        if (selectedTrajectoryId !== d.id) row.classed("row-hover", false);
+        leftSvg.selectAll(".l-row").filter(ld => ld.id === d.id).classed("hovered", false);
+      })
       .on("click", (e, d) => highlightRow(d.id));
 
     rows.append("rect")
@@ -487,14 +519,14 @@ export function drawBehaviorRug(data, containerSelector) {
         .attr("width", cellSize)
         .attr("height", cellSize)
         .attr("fill", (d, i) => {
-            if (turnIndices.has(i)) return "#d2b4de";
-            if (lentoIndices.has(i)) return "#fae3b1ff";
-            return VISUALIZATION_CONFIG.cellBackgroundColor || "#fff";
+          if (turnIndices.has(i)) return "#d2b4de";
+          if (lentoIndices.has(i)) return "#fae3b1ff";
+          return VISUALIZATION_CONFIG.cellBackgroundColor || "#fff";
         })
         .attr("stroke", (d, i) => {
-            if (turnIndices.has(i)) return "#8e44ad";
-            if (lentoIndices.has(i)) return "#fbbe63ff";
-            return VISUALIZATION_CONFIG.cellBorderColor || "#ddd";
+          if (turnIndices.has(i)) return "#8e44ad";
+          if (lentoIndices.has(i)) return "#fbbe63ff";
+          return VISUALIZATION_CONFIG.cellBorderColor || "#ddd";
         })
         .attr("stroke-width", (d, i) => (turnIndices.has(i) || lentoIndices.has(i)) ? 1.5 : (VISUALIZATION_CONFIG.cellBorderWidth ?? 0.5))
         .style("pointer-events", "none");
@@ -576,7 +608,7 @@ export function drawBehaviorRug(data, containerSelector) {
       .attr("y", -5)
       .attr("font-size", 11)
       .attr("font-weight", "bold")
-      .text("Speed (Light → Dark)");
+      .text("Speed");
 
     SPEED_LEVELS.forEach((s, i) => {
       const rowY = i * 20;

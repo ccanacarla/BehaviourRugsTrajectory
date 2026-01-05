@@ -105,9 +105,11 @@ export function frequencyGlyph(data, targetSelector = ".container") {
       .attr("class", "plot-container");
 
     plotDiv.append("h4")
-      .text(d.trajectory_id)
+      .html(`<strong>Frequency of states</strong><br>${d.trajectory_id}`)
       .style("margin-bottom", "5px")
-      .style("font-size", "12px");
+      .style("font-size", "12px")
+      .style("font-weight", "normal");
+
 
     const svg = plotDiv.append("svg")
       .attr("width", size + 20)
