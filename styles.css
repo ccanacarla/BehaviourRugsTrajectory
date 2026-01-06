@@ -202,6 +202,56 @@ body {
     margin-right: 10px;
 }
 
+/* Dropdown Styles */
+.dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.dropdown-toggle {
+    background-color: #fff;
+    color: #333;
+    padding: 5px 10px;
+    font-size: 12px;
+    border: 1px solid #ccc;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+.dropdown-toggle:hover {
+    background-color: #f1f1f1;
+}
+
+.dropdown-content {
+    display: none;
+    position: absolute;
+    background-color: #f9f9f9;
+    min-width: 160px;
+    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+    z-index: 1000; /* Ensure it's above other elements */
+    padding: 5px 0;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.dropdown-content.show {
+    display: block;
+}
+
+.dropdown-content label {
+    color: black;
+    padding: 8px 16px;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+
+.dropdown-content label:hover {
+    background-color: #f1f1f1;
+}
+
 /* --- Estilos do Line Pins --- */
 .frenquency-glyph-scroll-wrapper {
     width: 100%;
@@ -249,4 +299,19 @@ body {
     fill: #215b8a;
     font-weight: 700;
     font-size: 11px;
+}
+
+/* --- Tooltip --- */
+.tooltip {
+    position: absolute;
+    text-align: center;
+    padding: 6px;
+    font-size: 12px;
+    background: rgba(0, 0, 0, 0.8);
+    color: #fff;
+    border-radius: 4px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s;
+    z-index: 1000;
 }

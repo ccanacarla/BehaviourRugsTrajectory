@@ -59,7 +59,7 @@ export function drawBehaviorRug(data, containerSelector) {
   controlsDiv.append("span")
     .style("font-weight", "bold")
     .style("font-size", "12px")
-    .text("Suavização:");
+    .text("Smoothing:");
 
   const radioGroup = controlsDiv.append("div")
     .style("display", "flex")
@@ -99,41 +99,57 @@ export function drawBehaviorRug(data, containerSelector) {
     .style("background", "#ccc")
     .style("margin", "0 10px");
 
-  // Motif control
-  const motifLabel = controlsDiv.append("label")
-    .style("font-size", "12px")
-    .style("cursor", "pointer")
-    .style("display", "flex")
-    .style("align-items", "center")
-    .style("gap", "4px");
+  // Dropdown for Motifs
+  const dropdown = controlsDiv.append("div")
+      .attr("class", "dropdown");
 
-  const motifInput = motifLabel.append("input")
-    .attr("type", "checkbox");
+  const dropdownBtn = dropdown.append("button")
+      .attr("class", "dropdown-toggle")
+      .text("Select Motifs ▼");
 
-  motifLabel.append("span").text("Motif: Very_Slow (k=3)");
+  const dropdownContent = dropdown.append("div")
+      .attr("class", "dropdown-content");
 
-  motifInput.on("change", function () {
-    showLentoMotif = this.checked;
-    render();
+  // Helper to add checkbox item to dropdown
+  function addDropdownItem(text, checked, onChange) {
+      const label = dropdownContent.append("label");
+      const input = label.append("input")
+          .attr("type", "checkbox")
+          .property("checked", checked);
+      
+      label.append("span").text(text);
+
+      input.on("change", function() {
+          onChange(this.checked);
+      });
+  }
+
+  addDropdownItem("Very_Slow (k=3)", showLentoMotif, (checked) => {
+      showLentoMotif = checked;
+      render();
   });
 
-  // Motif control: Direction Change
-  const motifDirLabel = controlsDiv.append("label")
-    .style("font-size", "12px")
-    .style("cursor", "pointer")
-    .style("display", "flex")
-    .style("align-items", "center")
-    .style("gap", "4px")
-    .style("margin-left", "10px");
+  addDropdownItem("Abrupt Turn", showDirectionChangeMotif, (checked) => {
+      showDirectionChangeMotif = checked;
+      render();
+  });
 
-  const motifDirInput = motifDirLabel.append("input")
-    .attr("type", "checkbox");
+  // Toggle dropdown logic
+  dropdownBtn.on("click", function(event) {
+      event.stopPropagation();
+      const isVisible = dropdownContent.classed("show");
+      d3.selectAll(".dropdown-content").classed("show", false); // Close others if any
+      dropdownContent.classed("show", !isVisible);
+  });
 
-  motifDirLabel.append("span").text("Motif: Abrupt Turn");
-
-  motifDirInput.on("change", function () {
-    showDirectionChangeMotif = this.checked;
-    render();
+  // Close dropdown when clicking outside
+  d3.select(window).on("click.dropdown", function() {
+       dropdownContent.classed("show", false);
+  });
+  
+  // Prevent closing when clicking inside content
+  dropdownContent.on("click", function(event) {
+      event.stopPropagation();
   });
 
   // Legend control
@@ -508,7 +524,52 @@ export function drawBehaviorRug(data, containerSelector) {
           return VISUALIZATION_CONFIG.cellBorderColor || "#ddd";
         })
         .attr("stroke-width", (d, i) => (turnIndices.has(i) || lentoIndices.has(i)) ? 1.5 : (VISUALIZATION_CONFIG.cellBorderWidth ?? 0.5))
-        .style("pointer-events", "none");
+        .style("pointer-events", (d, i) => (turnIndices.has(i) || lentoIndices.has(i)) ? "auto" : "none")
+        .on("mouseover", function(event, d) {
+            // Need index 'i' which is not passed directly in d3 v6+ if using arrow function with (d, i) from parent data binding?
+            // Actually, in d3 v6+, listener is (event, d). 'i' is not passed directly here unless we use closure or nodes index.
+            // But we can get 'i' from the parent selection loop or assume data order.
+            // Easier: attach the index or motif type to the data bound or element.
+            
+            // However, 'cells' selection data is 'rowData.seq'.
+            // d is the data item. 'i' is the index in the selection.
+            // Let's use d3.select(this) to access the element if we need it, but we need 'i' to check indices.
+            // We can redo the .data().enter() using .each() to capture 'i' or just use the second arg if available.
+            // In d3 v6+, .on("event", (event, d) => {}) - 'this' is element.
+            // But we need 'i'.
+            
+            // Let's use the fact that we set the style above based on 'i'.
+            // Actually, we are inside `cells.append("rect")`. We can't easily access `i` in the listener unless we capture it.
+            // Refactoring to .each() might be cleaner to attach listeners with closure over `i`.
+        })
+        .each(function(d, i) {
+            const el = d3.select(this);
+            const isTurn = turnIndices.has(i);
+            const isLento = lentoIndices.has(i);
+
+            if (isTurn || isLento) {
+                el.on("mouseover", function(event) {
+                    const tooltip = d3.select("body").selectAll(".tooltip").data([0]).join("div").attr("class", "tooltip");
+                    let text = "";
+                    if (isTurn) text += "Abrupt Turn";
+                    if (isTurn && isLento) text += " & ";
+                    if (isLento) text += "Very Slow";
+                    
+                    tooltip.text(text)
+                        .style("opacity", 1)
+                        .style("left", (event.pageX + 10) + "px")
+                        .style("top", (event.pageY - 10) + "px");
+                })
+                .on("mousemove", function(event) {
+                    d3.select(".tooltip")
+                        .style("left", (event.pageX + 10) + "px")
+                        .style("top", (event.pageY - 10) + "px");
+                })
+                .on("mouseout", function() {
+                    d3.select(".tooltip").style("opacity", 0);
+                });
+            }
+        });
 
       // glifos
       cells.each(function (d) {

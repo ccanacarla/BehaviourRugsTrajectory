@@ -373,7 +373,7 @@ export function drawTrajectoryView(d, containerSelector, opts = {}) {
     g.selectAll(".highlight-group").remove();
     const hG = g.append("g").attr("class", "highlight-group");
 
-    const drawHighlights = (indices, color) => {
+    const drawHighlights = (indices, color, type) => {
       if (!indices || indices.size === 0) return;
       
       points.forEach((p, i) => {
@@ -387,7 +387,23 @@ export function drawTrajectoryView(d, containerSelector, opts = {}) {
             .attr("stroke", color)
             .attr("stroke-width", 4)
             .attr("stroke-opacity", 0.6)
-            .attr("stroke-linecap", "round");
+            .attr("stroke-linecap", "round")
+            .style("cursor", "crosshair")
+            .on("mouseover", function(event) {
+                const tooltip = d3.select("body").selectAll(".tooltip").data([0]).join("div").attr("class", "tooltip");
+                tooltip.text(type)
+                    .style("opacity", 1)
+                    .style("left", (event.pageX + 10) + "px")
+                    .style("top", (event.pageY - 10) + "px");
+            })
+            .on("mousemove", function(event) {
+                 d3.select(".tooltip")
+                    .style("left", (event.pageX + 10) + "px")
+                    .style("top", (event.pageY - 10) + "px");
+            })
+            .on("mouseout", function() {
+                d3.select(".tooltip").style("opacity", 0);
+            });
         }
         // Draw point if i is highlighted
         if (indices.has(i)) {
@@ -395,13 +411,29 @@ export function drawTrajectoryView(d, containerSelector, opts = {}) {
             .attr("cx", xScale(p[0]))
             .attr("cy", yScale(p[1]))
             .attr("r", 3)
-            .attr("fill", color);
+            .attr("fill", color)
+            .style("cursor", "crosshair")
+            .on("mouseover", function(event) {
+                const tooltip = d3.select("body").selectAll(".tooltip").data([0]).join("div").attr("class", "tooltip");
+                tooltip.text(type)
+                    .style("opacity", 1)
+                    .style("left", (event.pageX + 10) + "px")
+                    .style("top", (event.pageY - 10) + "px");
+            })
+            .on("mousemove", function(event) {
+                 d3.select(".tooltip")
+                    .style("left", (event.pageX + 10) + "px")
+                    .style("top", (event.pageY - 10) + "px");
+            })
+            .on("mouseout", function() {
+                d3.select(".tooltip").style("opacity", 0);
+            });
         }
       });
     };
 
-    if (opts.highlightLentoIndices) drawHighlights(opts.highlightLentoIndices, "orange");
-    if (opts.highlightTurnIndices) drawHighlights(opts.highlightTurnIndices, "#9b59b6");
+    if (opts.highlightLentoIndices) drawHighlights(opts.highlightLentoIndices, "orange", "Very Slow");
+    if (opts.highlightTurnIndices) drawHighlights(opts.highlightTurnIndices, "#9b59b6", "Abrupt Turn");
 
     const pStart = points[0];
     const pEnd = points[points.length - 1];
