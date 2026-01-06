@@ -47,7 +47,7 @@ body {
     flex: 1;
     width: 100%;
     padding: 10px;
-    overflow: auto; /* Permite scroll se necessário nas outras views */
+    overflow: hidden; /* Permite scroll se necessário nas outras views */
     display: block;
     position: relative;
 }
@@ -88,33 +88,35 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: flex-start;
-    overflow-y: auto;
+    overflow-y: hidden;
 }
 
 /* --- Estilos do Behavior Rug Interno --- */
 .behavior-rug-wrap {
     width: 100%;
     height: 100%;
-    display: grid;
-    grid-template-columns: auto 1fr auto; /* Labels | Gráfico | Legenda */
-    overflow: hidden;
+    position: relative;
+    /* Layout agora é controlado via JS (scrollContainer flex) */
 }
 
-.behavior-rug-left,
+.behavior-rug-left {
+    background: #fff;
+    z-index: 2;
+    /* overflow removido pois o pai controla */
+}
+
 .behavior-rug-right {
     background: #fff;
     z-index: 2;
     overflow: hidden; /* Sem scroll, controlado via JS ou fixo */
-    
 }
 
-.behavior-rug-right {
-    
+.behavior-rug-right {    
     border-right: none;
 }
 
 .behavior-rug-center {
-    overflow: auto; /* Scroll principal */
+    
     position: relative;
 }
 
@@ -138,6 +140,67 @@ body {
 }
 .row-hover path { transform: scale(1.02); }
 .row-selected path { transform: scale(1.04); }
+
+/* --- Estilos de Controle do Behavior Rug --- */
+.rug-controls {
+    padding: 10px;
+    background: #ccccccff;
+    border-bottom: 1px solid #ccc;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex-shrink: 0;
+}
+
+.rug-controls span {
+    font-weight: bold;
+    font-size: 12px;
+}
+
+.rug-controls-group {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.rug-controls label {
+    font-size: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.rug-controls input[type="radio"],
+.rug-controls input[type="checkbox"] {
+    cursor: pointer;
+}
+
+.rug-controls-separator {
+    width: 1px;
+    height: 20px;
+    background: #ccc;
+    margin: 0 10px;
+}
+
+.rug-controls-motif {
+    font-size: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: 10px;
+}
+
+.rug-controls-legend {
+    font-size: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: auto;
+    margin-right: 10px;
+}
 
 /* --- Estilos do Line Pins --- */
 .frenquency-glyph-scroll-wrapper {

@@ -159,35 +159,38 @@ export function drawBehaviorRug(data, containerSelector) {
   // ==================================================
   // 3) Estrutura painéis (Left | Center) + Floating Legend
   // ==================================================
+  const leftWidth = VISUALIZATION_CONFIG.behaviourRug?.leftPanelWidth ?? 220;
+
   const wrap = container.append("div")
     .attr("class", "behavior-rug-wrap")
-    .style("height", `calc(100% - ${controlsHeight}px)`)
-    .style("position", "relative")
-    .style("overflow", "hidden")
     .style("display", "grid")
-    .style("grid-template-columns", "auto 1fr") // Only 2 columns
+    .style("grid-template-columns", `${leftWidth}px 1fr`)
+    .style("height", `calc(100% - ${controlsHeight}px)`)
+    .style("overflow-y", "auto")   // 👈 SCROLL VERTICAL
+    .style("overflow-x", "hidden")
     .style("min-height", "0");
 
+
+
   const leftDiv = wrap.append("div")
-    .attr("class", "behavior-rug-left")
-    .style("overflow-y", "auto")
-    .style("min-height", "0");
+    .attr("class", "behavior-rug-left");
 
   const centerDiv = wrap.append("div")
     .attr("class", "behavior-rug-center")
-    .style("overflow", "auto")
-    .style("min-height", "0");
+    .style("overflow-x", "auto") 
+    .style("overflow-y", "hidden");
+
 
   // Floating Legend
-  const rightDiv = wrap.append("div")
+  const rightDiv = container.append("div")
     .attr("class", "behavior-rug-right")
     .style("position", "absolute")
     .style("right", "20px")
-    .style("top", "20px")
+    .style("top", "50px")
     .style("height", "230px")
     .style("width", "170px")
     .style("z-index", "100")
-    .style("background", "rgba(255, 255, 255, 0.95)")
+    .style("background", "rgba(255, 255, 255, 0.85)")
     .style("border", "1px solid #ddd")
     .style("border-radius", "6px")
     .style("box-shadow", "0 4px 12px rgba(0,0,0,0.15)")
@@ -204,30 +207,6 @@ export function drawBehaviorRug(data, containerSelector) {
   function toggleLegend(show) {
     rightDiv.style("display", show ? "block" : "none");
   }
-
-  const centerNode = centerDiv.node();
-  const leftNode = leftDiv.node();
-
-  let isSyncingCenter = false;
-  let isSyncingLeft = false;
-
-  // Center → Left
-  centerNode.addEventListener("scroll", () => {
-    if (isSyncingCenter) return;
-
-    isSyncingLeft = true;
-    leftNode.scrollTop = centerNode.scrollTop;
-    isSyncingLeft = false;
-  });
-
-  // Left → Center
-  leftNode.addEventListener("scroll", () => {
-    if (isSyncingLeft) return;
-
-    isSyncingCenter = true;
-    centerNode.scrollTop = leftNode.scrollTop;
-    isSyncingCenter = false;
-  });
 
   // ==================================================
   // 4) Helpers (speed, direction, cor monocromática)
