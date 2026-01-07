@@ -78,7 +78,7 @@ function showBehaviorRug(dataToRender = null, title = null) {
                 <div id="rug-panel"></div>
                 <div id="glyph-panel">
                     <div style="text-align:center; margin-top: 50%; ">
-                        <p>Selecione uma trajetória</p>
+                        <p>Select a trajectory</p>
                     </div>
                 </div>
             </div>

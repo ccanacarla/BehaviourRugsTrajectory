@@ -124,7 +124,7 @@ export function drawBehaviorRug(data, containerSelector) {
       });
   }
 
-  addDropdownItem("Very_Slow (k=3)", showLentoMotif, (checked) => {
+  addDropdownItem("DDD", showLentoMotif, (checked) => {
       showLentoMotif = checked;
       render();
   });
