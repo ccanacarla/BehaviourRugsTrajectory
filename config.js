@@ -40,6 +40,11 @@ export const VISUALIZATION_CONFIG = {
   },
 };
 
+export const CLUSTER_COLORS = [
+    "#66c2a5", "#fc8d62", "#8da0cb", "#e78ac3", "#a6d854",
+    "#ffd92f", "#b07aa1", "#ff9da7", "#9c755f", "#bab0ab"
+];
+
 // String literal mappings for speeds and directions, used in parsing logic
 export const SPEED_STRINGS = {
   PARADO: "Parado",

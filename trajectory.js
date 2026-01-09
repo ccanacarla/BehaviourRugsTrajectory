@@ -39,29 +39,35 @@ function parseTrajectoryData(str) {
 /**
  * Desenha a visualização da trajetória.
  *
- * @param {Object} d - linha do CSV ou datum normalizado (com d.raw)
+ * @param {Object|Array} data - Single object or Array of objects (trajectory rows).
  * @param {string} containerSelector
  * @param {Object} [opts]
  * @param {{x:[number,number], y:[number,number]}} [opts.fixedDomain]
- *        Domínio fixo global para comparar todas as trajetórias.
- *        Ex: { x: [-10, 10], y: [-10, 10] }
+ * @param {string} [opts.highlightId] - ID of a trajectory to highlight in multi-view.
+ * @param {Set} [opts.highlightLentoIndices]
+ * @param {Set} [opts.highlightTurnIndices]
  */
-export function drawTrajectoryView(d, containerSelector, opts = {}) {
+export function drawTrajectoryView(data, containerSelector, opts = {}) {
   const container = d3.select(containerSelector);
   container.selectAll("*").remove();
 
-  const row = d?.raw ? d.raw : d;
+  // Handle single item or array
+  const rows = Array.isArray(data) ? data : [data];
+  if (rows.length === 0) return;
 
-  // Se você não passar fixedDomain, usa este default (ajuste conforme seu dataset)
-  const DEFAULT_FIXED_DOMAIN = opts.fixedDomain || { x: [-1, 1], y: [-1, 1] };
-
+      const isMulti = rows.length > 1;
+    const highlightId = opts.highlightId;
+    const highlightColor = opts.highlightColor || "#7f7f7eff";
+  
+    // Se você não passar fixedDomain, usa este default (ajuste conforme seu dataset)
+    const DEFAULT_FIXED_DOMAIN = opts.fixedDomain || { x: [-1, 1], y: [-1, 1] };
   const wrapper = container.append("div")
     .attr("class", "trajectory-view-wrapper")
     .style("width", "100%")
     .style("border-radius", "6px")
     .style("margin-bottom", "10px")
     .style("background", "#fff")
-    .style("border", "1px solid #ddd")
+    .style("height", "auto")
     .style("padding", "0px");
 
   // ==================================================
@@ -79,14 +85,14 @@ export function drawTrajectoryView(d, containerSelector, opts = {}) {
     .style("border-radius", "6px 6px 0px 0px")
     .style("border", "1px 1px 1px 0px solid #ccc");
 
-  // Animation state
+  // Animation state (Only for single trajectory)
   let isPlaying = false;
   let animationId = null;
   let currentPointIndex = 0;
   let animationPoints = [];
   let animXScale, animYScale;
 
-  // --- Grupo A: tipo de trajetória (Now Third) ---
+  // --- Grupo A: tipo de trajetória ---
   const trajGroup = controls.append("div")
     .style("display", "flex")
     .style("gap", "12px")
@@ -127,7 +133,7 @@ export function drawTrajectoryView(d, containerSelector, opts = {}) {
     label.append("span").text(opt.label);
   });
 
-  // --- Grupo B: modo de escala (Now Second) ---
+  // --- Grupo B: modo de escala ---
   const scaleGroup = controls.append("div")
     .style("display", "flex")
     .style("gap", "12px")
@@ -166,37 +172,44 @@ export function drawTrajectoryView(d, containerSelector, opts = {}) {
     label.append("span").text(opt.label);
   });
 
-  // --- Grupo C: Playback (Now First) ---
-  const playbackGroup = controls.append("div")
-    .style("display", "flex")
-    .style("gap", "8px")
-    .style("align-items", "center");
-
-  const playBtn = playbackGroup.append("button")
-      .text("Play")
-      .style("cursor", "pointer")
-      .style("padding", "2px 6px")
-      .style("font-size", "10px");
-
-  const timelineSlider = playbackGroup.append("input")
-      .attr("type", "range")
-      .attr("min", 0)
-      .attr("max", 100)
-      .attr("value", 0)
-      .style("flex-grow", "1")
-      .style("cursor", "pointer");
+  // --- Grupo C: Playback ---
+  let playBtn, timelineSlider;
   
-  playBtn.on("click", () => {
-      if (isPlaying) pauseAnimation();
-      else startAnimation();
-  });
+  // Show playback if single OR if multi-view but highlighting one specific trajectory
+  // (Optional: for now, keep simplistic and only show play if truly single row passed, 
+  // or disable playback when viewing context to avoid confusion)
+  if (!isMulti) {
+      const playbackGroup = controls.append("div")
+        .style("display", "flex")
+        .style("gap", "8px")
+        .style("align-items", "center");
 
-  timelineSlider.on("input", function() {
-      const val = +this.value;
-      if (!animationPoints.length) return;
-      currentPointIndex = val;
-      updateTrackerPosition();
-  });
+      playBtn = playbackGroup.append("button")
+          .text("Play")
+          .style("cursor", "pointer")
+          .style("padding", "2px 6px")
+          .style("font-size", "10px");
+
+      timelineSlider = playbackGroup.append("input")
+          .attr("type", "range")
+          .attr("min", 0)
+          .attr("max", 100)
+          .attr("value", 0)
+          .style("flex-grow", "1")
+          .style("cursor", "pointer");
+      
+      playBtn.on("click", () => {
+          if (isPlaying) pauseAnimation();
+          else startAnimation();
+      });
+
+      timelineSlider.on("input", function() {
+          const val = +this.value;
+          if (!animationPoints.length) return;
+          currentPointIndex = val;
+          updateTrackerPosition();
+      });
+  }
 
   // ==================================================
   // 2) Área do Plot
@@ -212,21 +225,21 @@ export function drawTrajectoryView(d, containerSelector, opts = {}) {
     .style("background", "#fff");
 
   const g = svg.append("g")
-    .attr("transform", `translate(${margin.left},${margin.top})`);
+    .attr("transform", `translate(${margin.left},${margin.top})
+`);
 
   const innerW = width - margin.left - margin.right;
   const innerH = height - margin.top - margin.bottom;
 
-  const path = g.append("path")
-    .attr("fill", "none")
-    .attr("stroke", "#022fab")
-    .attr("stroke-width", 2);
+  const pathsGroup = g.append("g").attr("class", "paths-group");
 
   const xAxisG = g.append("g")
-    .attr("transform", `translate(0, ${innerH})`);
+    .attr("transform", `translate(0, ${innerH})
+`);
 
   const yAxisG = g.append("g");
 
+  // Single mode markers
   const startPoint = g.append("circle")
     .attr("r", 4)
     .attr("fill", "green")
@@ -237,7 +250,6 @@ export function drawTrajectoryView(d, containerSelector, opts = {}) {
     .attr("fill", "red")
     .style("display", "none");
 
-  // Tracker for animation
   const tracker = g.append("circle")
     .attr("r", 5)
     .attr("fill", "orange")
@@ -250,7 +262,7 @@ export function drawTrajectoryView(d, containerSelector, opts = {}) {
   // ==================================================
   function pauseAnimation() {
       isPlaying = false;
-      playBtn.text("Play");
+      if(playBtn) playBtn.text("Play");
       if (animationId) cancelAnimationFrame(animationId);
       animationId = null;
   }
@@ -258,17 +270,16 @@ export function drawTrajectoryView(d, containerSelector, opts = {}) {
   function stopAnimation() {
       pauseAnimation();
       currentPointIndex = 0;
-      timelineSlider.property("value", 0);
+      if(timelineSlider) timelineSlider.property("value", 0);
       tracker.style("display", "none");
   }
 
   function startAnimation() {
       if (!animationPoints.length) return;
       isPlaying = true;
-      playBtn.text("Pause");
+      if(playBtn) playBtn.text("Pause");
       tracker.style("display", null);
       
-      // If at end, restart
       if (currentPointIndex >= animationPoints.length - 1) {
           currentPointIndex = 0;
       }
@@ -282,78 +293,73 @@ export function drawTrajectoryView(d, containerSelector, opts = {}) {
              .attr("cx", animXScale(p[0]))
              .attr("cy", animYScale(p[1]));
       }
-      // Sync slider if not dragging (simple sync)
-      timelineSlider.property("value", currentPointIndex);
+      if(timelineSlider) timelineSlider.property("value", currentPointIndex);
   }
 
   function animate() {
       if (!isPlaying) return;
-      
       updateTrackerPosition();
       currentPointIndex++;
-      
       if (currentPointIndex < animationPoints.length) {
           animationId = requestAnimationFrame(animate);
       } else {
-          pauseAnimation(); // End of playback
+          pauseAnimation(); 
       }
   }
 
   function updatePlot() {
-    stopAnimation(); // Reset animation on data update
-
-    const rawString = row[currentKey];
-
-    if (!rawString) {
-      path.attr("d", null);
-      startPoint.style("display", "none");
-      endPoint.style("display", "none");
-      wrapper.select(".chart-title").remove();
-      wrapper.select(".chart-subtitle").remove();
-      return;
-    }
-
-    const points = parseTrajectoryData(rawString);
-    animationPoints = points; // Store for animation
+    stopAnimation();
     
-    // Update slider max
-    timelineSlider.attr("max", points.length > 0 ? points.length - 1 : 0);
+    // Parse all trajectories
+    const parsedData = rows.map(d => {
+        const r = d.raw || d;
+        const val = r[currentKey] ? (r[currentKey].raw || r[currentKey]) : "";
+        return {
+            id: r.trajectory_id,
+            points: parseTrajectoryData(val)
+        };
+    }).filter(d => d.points.length > 0);
 
-    if (!points.length) {
-      console.warn("Trajetória vazia ou inválida:", row.trajectory_id, currentKey);
-      path.attr("d", null);
-      startPoint.style("display", "none");
-      endPoint.style("display", "none");
+    if (parsedData.length === 0) {
+      pathsGroup.selectAll("*").remove();
       return;
     }
 
+    // Determine target for single-mode features
+    // If multi but highlightId exists, we can optionally point to that. 
+    // But for simplicity, animation/start/end is only for strict single mode.
+    if (!isMulti) {
+        animationPoints = parsedData[0].points;
+        if(timelineSlider) timelineSlider.attr("max", animationPoints.length > 0 ? animationPoints.length - 1 : 0);
+    }
+
+    // Determine domain
     let xDomain, yDomain;
 
     if (scaleMode === "fixed") {
-      // Domínio fixo global
       xDomain = DEFAULT_FIXED_DOMAIN.x;
       yDomain = DEFAULT_FIXED_DOMAIN.y;
     } else {
-      // Domínio automático (fit to data)
-      const xExtent = d3.extent(points, p => p[0]);
-      const yExtent = d3.extent(points, p => p[1]);
+      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+      
+      parsedData.forEach(d => {
+          const xe = d3.extent(d.points, p => p[0]);
+          const ye = d3.extent(d.points, p => p[1]);
+          if (xe[0] < minX) minX = xe[0];
+          if (xe[1] > maxX) maxX = xe[1];
+          if (ye[0] < minY) minY = ye[0];
+          if (ye[1] > maxY) maxY = ye[1];
+      });
 
-      const xPad = (xExtent[1] - xExtent[0]) * 0.1 || 1;
-      const yPad = (yExtent[1] - yExtent[0]) * 0.1 || 1;
-
-      xDomain = [xExtent[0] - xPad, xExtent[1] + xPad];
-      yDomain = [yExtent[0] - yPad, yExtent[1] + yPad];
+      const xPad = (maxX - minX) * 0.1 || 1;
+      const yPad = (maxY - minY) * 0.1 || 1;
+      xDomain = [minX - xPad, maxX + xPad];
+      yDomain = [minY - yPad, maxY + yPad];
     }
 
-    const xScale = d3.scaleLinear()
-      .domain(xDomain)
-      .range([0, innerW]);
+    const xScale = d3.scaleLinear().domain(xDomain).range([0, innerW]);
+    const yScale = d3.scaleLinear().domain(yDomain).range([innerH, 0]);
 
-    const yScale = d3.scaleLinear()
-      .domain(yDomain)
-      .range([innerH, 0]);
-
-    // Store scales for animation
     animXScale = xScale;
     animYScale = yScale;
 
@@ -364,114 +370,98 @@ export function drawTrajectoryView(d, containerSelector, opts = {}) {
     xAxisG.transition().duration(250).call(d3.axisBottom(xScale).ticks(5));
     yAxisG.transition().duration(250).call(d3.axisLeft(yScale).ticks(5));
 
-    path.datum(points)
-      .transition()
-      .duration(450)
-      .attr("d", line);
+    // Bind data to paths
+    const paths = pathsGroup.selectAll(".traj-path")
+        .data(parsedData, d => d.id);
 
-    // Highlight segments
+    paths.exit().remove();
+
+    const pathsEnter = paths.enter().append("path")
+        .attr("class", "traj-path")
+        .attr("fill", "none")
+        .attr("stroke-linecap", "round");
+
+    pathsEnter.merge(paths)
+        .transition()
+        .duration(450)
+        .attr("d", d => line(d.points))
+        .attr("stroke", d => {
+            if (highlightId && d.id === highlightId) return highlightColor; // Selected: Dynamic color
+            return "#022fab";
+        })
+        .attr("stroke-width", d => {
+             if (highlightId && d.id === highlightId) return 3; 
+             return isMulti ? 1 : 2;
+        })
+        .attr("opacity", d => {
+             if (highlightId && d.id === highlightId) return 1;
+             if (highlightId) return 0.1; // Dim others significantly
+             return isMulti ? 0.3 : 1;
+        })
+        // Sort to ensure highlighted is on top
+        .selection().sort((a, b) => {
+             if (a.id === highlightId) return 1;
+             if (b.id === highlightId) return -1;
+             return 0;
+        });
+
+    // Clean up single-mode overlays if switching to multi
     g.selectAll(".highlight-group").remove();
-    const hG = g.append("g").attr("class", "highlight-group");
+    startPoint.style("display", "none");
+    endPoint.style("display", "none");
 
-    const drawHighlights = (indices, color, type) => {
-      if (!indices || indices.size === 0) return;
-      
-      points.forEach((p, i) => {
-        // Draw segment if i and i+1 are highlighted
-        if (i < points.length - 1 && indices.has(i) && indices.has(i + 1)) {
-          hG.append("line")
-            .attr("x1", xScale(p[0]))
-            .attr("y1", yScale(p[1]))
-            .attr("x2", xScale(points[i + 1][0]))
-            .attr("y2", yScale(points[i + 1][1]))
-            .attr("stroke", color)
-            .attr("stroke-width", 4)
-            .attr("stroke-opacity", 0.6)
-            .attr("stroke-linecap", "round")
-            .style("cursor", "crosshair")
-            .on("mouseover", function(event) {
-                const tooltip = d3.select("body").selectAll(".tooltip").data([0]).join("div").attr("class", "tooltip");
-                tooltip.text(type)
-                    .style("opacity", 1)
-                    .style("left", (event.pageX + 10) + "px")
-                    .style("top", (event.pageY - 10) + "px");
-            })
-            .on("mousemove", function(event) {
-                 d3.select(".tooltip")
-                    .style("left", (event.pageX + 10) + "px")
-                    .style("top", (event.pageY - 10) + "px");
-            })
-            .on("mouseout", function() {
-                d3.select(".tooltip").style("opacity", 0);
-            });
+    // Re-add single mode overlays if strictly single
+    if (!isMulti && parsedData[0]) {
+        const points = parsedData[0].points;
+        const pStart = points[0];
+        const pEnd = points[points.length - 1];
+
+        startPoint.style("display", null)
+            .attr("cx", xScale(pStart[0])).attr("cy", yScale(pStart[1]));
+        endPoint.style("display", null)
+            .attr("cx", xScale(pEnd[0])).attr("cy", yScale(pEnd[1]));
+
+        if (opts.highlightLentoIndices || opts.highlightTurnIndices) {
+            const hG = g.append("g").attr("class", "highlight-group");
+            const drawHighlights = (indices, color, type) => {
+                if (!indices || indices.size === 0) return;
+                points.forEach((p, i) => {
+                    if (i < points.length - 1 && indices.has(i) && indices.has(i + 1)) {
+                        hG.append("line")
+                            .attr("x1", xScale(p[0])).attr("y1", yScale(p[1]))
+                            .attr("x2", xScale(points[i+1][0])).attr("y2", yScale(points[i+1][1]))
+                            .attr("stroke", color).attr("stroke-width", 4)
+                            .attr("stroke-opacity", 0.6);
+                    }
+                    if (indices.has(i)) {
+                        hG.append("circle")
+                            .attr("cx", xScale(p[0])).attr("cy", yScale(p[1]))
+                            .attr("r", 3).attr("fill", color);
+                    }
+                });
+            };
+            if (opts.highlightLentoIndices) drawHighlights(opts.highlightLentoIndices, "orange", "Very Slow");
+            if (opts.highlightTurnIndices) drawHighlights(opts.highlightTurnIndices, "#9b59b6", "Abrupt Turn");
         }
-        // Draw point if i is highlighted
-        if (indices.has(i)) {
-          hG.append("circle")
-            .attr("cx", xScale(p[0]))
-            .attr("cy", yScale(p[1]))
-            .attr("r", 3)
-            .attr("fill", color)
-            .style("cursor", "crosshair")
-            .on("mouseover", function(event) {
-                const tooltip = d3.select("body").selectAll(".tooltip").data([0]).join("div").attr("class", "tooltip");
-                tooltip.text(type)
-                    .style("opacity", 1)
-                    .style("left", (event.pageX + 10) + "px")
-                    .style("top", (event.pageY - 10) + "px");
-            })
-            .on("mousemove", function(event) {
-                 d3.select(".tooltip")
-                    .style("left", (event.pageX + 10) + "px")
-                    .style("top", (event.pageY - 10) + "px");
-            })
-            .on("mouseout", function() {
-                d3.select(".tooltip").style("opacity", 0);
-            });
-        }
-      });
-    };
+    }
 
-    if (opts.highlightLentoIndices) drawHighlights(opts.highlightLentoIndices, "orange", "Very Slow");
-    if (opts.highlightTurnIndices) drawHighlights(opts.highlightTurnIndices, "#9b59b6", "Abrupt Turn");
+    // Title update
+    let titleText;
+    if (highlightId) {
+        titleText = `Trajectory ${highlightId} <br> (in context of ${parsedData.length})`;
+    } else {
+        titleText = isMulti ? `${parsedData.length} Trajectories Selected` : `Trajetória ID: ${rows[0].trajectory_id || rows[0].id}`;
+    }
 
-    const pStart = points[0];
-    const pEnd = points[points.length - 1];
-
-    // Se escala fixa e o ponto estiver fora do domínio, ainda desenha, mas pode “sumir”.
-    // Isso é esperado: você está comparando numa mesma janela.
-    startPoint
-      .style("display", null)
-      .attr("cx", xScale(pStart[0]))
-      .attr("cy", yScale(pStart[1]));
-
-    endPoint
-      .style("display", null)
-      .attr("cx", xScale(pEnd[0]))
-      .attr("cy", yScale(pEnd[1]));
-/*
-    // Título / subtítulo
     wrapper.select(".chart-title").remove();
-    wrapper.select(".chart-subtitle").remove();
-
     wrapper.insert("div", "svg")
-      .attr("class", "chart-title")
-      .style("text-align", "center")
-      .style("font-size", "11px")
-      .style("color", "#666")
-      .style("margin-bottom", "2px")
-      .text(`Trajetória ID: ${row.trajectory_id} — ${currentKey}`);
-
-    wrapper.insert("div", "svg")
-      .attr("class", "chart-subtitle")
-      .style("text-align", "center")
-      .style("font-size", "10px")
-      .style("color", "#888")
-      .style("margin-bottom", "6px")
-      .text(`Escala: ${scaleMode === "fixed" ? "Fixa" : "Auto"} | Domínio X: [${xDomain[0]}, ${xDomain[1]}], Y: [${yDomain[0]}, ${yDomain[1]}]`);
-      */
+       .attr("class", "chart-title")
+       .style("text-align", "center")
+       .style("font-size", "11px")
+       .style("color", "#666")
+       .style("margin-bottom", "2px")
+       .html(`${titleText}`);
   }
-      
 
   updatePlot();
 }

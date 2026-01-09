@@ -29,7 +29,7 @@ export function frequencyGlyph(data, targetSelector = ".container") {
   const size = VISUALIZATION_CONFIG.frenquencyGlyph.glyphSize;
   const half = size / 2;
   const step = half / VISUALIZATION_CONFIG.frenquencyGlyph.glyphLevels;
-  const baseColor = VISUALIZATION_CONFIG.baseGlyphColor;
+  const baseColor = "#585858ff";
 
   const speedMap = {
     [SPEED_STRINGS.PARADO]: 0,

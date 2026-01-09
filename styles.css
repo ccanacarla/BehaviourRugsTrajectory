@@ -1,6 +1,8 @@
 @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap');
 
-/* --- Reset e Base --- */
+/* =========================================================
+   RESET & BASE
+========================================================= */
 * {
     box-sizing: border-box;
     margin: 0;
@@ -9,229 +11,159 @@
 
 body {
     font-family: 'Roboto', sans-serif;
-    color: #333;
     background-color: #f4f4f4;
+    color: #333;
     height: 100vh;
+    overflow: hidden;
+}
+
+/* =========================================================
+   CONTAINER PRINCIPAL
+========================================================= */
+.container {
+    width: 100%;
+    height: 100%;
+    padding: 10px;
+}
+
+/* =========================================================
+   GRID PRINCIPAL
+========================================================= */
+.rug-view-layout {
+    height: 100%;
+}
+
+.main-grid {
+    height: 100%;
+    display: grid;
+    grid-template-columns: 1fr 0.4fr 2.6fr 1fr;
+    gap: 10px;
+    overflow: hidden;
+}
+
+/* =========================================================
+   COLUNAS
+========================================================= */
+.left-column,
+.right-column {
     display: flex;
     flex-direction: column;
-    overflow: hidden; /* Evita scroll na página inteira, usamos scroll interno */
-}
-
-/* --- Menu --- */
-#menu-container {
-    background-color: #1a1a2e;
-    padding: 10px 20px;
-    display: flex;
-    justify-content: flex-end;
     gap: 10px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    overflow: hidden;
 }
 
-#menu-container button {
-    background: transparent;
-    border: 1px solid #4a4e69;
-    color: #e9ecef;
-    padding: 8px 16px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-family: 'Roboto', sans-serif;
-}
-
-#menu-container button:hover {
-    background-color: #162447;
-    border-color: #fff;
-}
-
-/* --- Container Principal --- */
-.container {
-    flex: 1;
-    width: 100%;
-    padding: 10px;
-    overflow: hidden; /* Permite scroll se necessário nas outras views */
-    display: block;
-    position: relative;
-}
-
-/* --- Layout Específico para o Behavior Rug (Split View) --- */
-.rug-view-layout {
-    display: grid;
-    grid-template-columns: 3fr 1fr; 
-    gap: 10px;
-    
-    /* MUDANÇA: Defina uma altura fixa em relação à tela (ex: 75% da altura da tela) */
-    height: 75vh; 
-    
-    /* Opcional: ou use uma altura fixa em pixels se preferir */
-    /* height: 600px; */
-    
-    width: 100%;
-    overflow: hidden; /* Impede que o painel cresça além desse tamanho */
-}
-
-/* Garanta que o container interno acompanhe essa altura */
-#rug-panel {
-    background: #fff;
+/* =========================================================
+   PAINÉIS
+========================================================= */
+.panel {
+    background: #ffffff;
     border: 1px solid #ddd;
     border-radius: 8px;
-    height: 100%; /* Ocupa toda a altura definida no pai (.rug-view-layout) */
-    overflow: hidden; /* Importante para o scroll funcionar nos filhos */
-    display: flex;
-    flex-direction: column;
     position: relative;
+    overflow: hidden;
+    flex: 1;
 }
 
-#glyph-panel {
-    
-    border-radius: 8px;
-    padding: 10px;
+.panel.scroll {
+    overflow-y: auto;
+}
+
+.rug-panel {
+    overflow: hidden;
+}
+
+/* =========================================================
+   PLACEHOLDER
+========================================================= */
+.panel-placeholder {
+    height: 100%;
     display: flex;
-    flex-direction: column;
     align-items: center;
-    justify-content: flex-start;
-    overflow-y: hidden;
+    justify-content: center;
+    color: #777;
+    font-size: 14px;
 }
 
-/* --- Estilos do Behavior Rug Interno --- */
+/* =========================================================
+   BEHAVIOR RUG
+========================================================= */
 .behavior-rug-wrap {
     width: 100%;
     height: 100%;
     position: relative;
-    /* Layout agora é controlado via JS (scrollContainer flex) */
 }
 
 .behavior-rug-left {
     background: #fff;
     z-index: 2;
-    /* overflow removido pois o pai controla */
-}
-
-.behavior-rug-right {
-    background: #fff;
-    z-index: 2;
-    overflow: hidden; /* Sem scroll, controlado via JS ou fixo */
-}
-
-.behavior-rug-right {    
-    border-right: none;
 }
 
 .behavior-rug-center {
-    
     position: relative;
 }
 
-/* Destaque da linha selecionada */
-.row-hover rect {
-    fill: rgba(42, 143, 244, 0.2);
-    stroke-width: 1.2px;
+.behavior-rug-right {
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 10;
 }
 
-.row-selected rect {
-    fill: #2ECC7144;
-   
-}
-
-/* Emphasis on glyphs when hovered/selected */
-.row-hover path,
-.row-selected path {
-    opacity: 1;
-    transform-box: fill-box;
-    transform-origin: 50% 50%;
-}
-.row-hover path { transform: scale(1.02); }
-.row-selected path { transform: scale(1.04); }
-
-/* --- Estilos de Controle do Behavior Rug --- */
+/* =========================================================
+   CONTROLES DO RUG
+========================================================= */
 .rug-controls {
-    padding: 10px;
     background: #ccccccff;
     border-bottom: 1px solid #ccc;
+    padding: 10px;
     display: flex;
     align-items: center;
     gap: 15px;
-    flex-shrink: 0;
-}
-
-.rug-controls span {
-    font-weight: bold;
     font-size: 12px;
-}
-
-.rug-controls-group {
-    display: flex;
-    gap: 12px;
-    flex-wrap: wrap;
 }
 
 .rug-controls label {
-    font-size: 12px;
-    cursor: pointer;
     display: flex;
     align-items: center;
     gap: 4px;
-}
-
-.rug-controls input[type="radio"],
-.rug-controls input[type="checkbox"] {
     cursor: pointer;
 }
 
-.rug-controls-separator {
-    width: 1px;
-    height: 20px;
-    background: #ccc;
-    margin: 0 10px;
+#tsne-panel {
+    min-height: 280px;
 }
 
-.rug-controls-motif {
-    font-size: 12px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    margin-left: 10px;
+#frequency-panel > div {
+    padding: 10px;
+    text-align: center;
 }
 
-.rug-controls-legend {
-    font-size: 12px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    margin-left: auto;
-    margin-right: 10px;
-}
-
-/* Dropdown Styles */
+/* =========================================================
+   DROPDOWN
+========================================================= */
 .dropdown {
     position: relative;
-    display: inline-block;
 }
 
 .dropdown-toggle {
-    background-color: #fff;
-    color: #333;
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 4px;
     padding: 5px 10px;
     font-size: 12px;
-    border: 1px solid #ccc;
     cursor: pointer;
-    border-radius: 4px;
-}
-
-.dropdown-toggle:hover {
-    background-color: #f1f1f1;
 }
 
 .dropdown-content {
     display: none;
     position: absolute;
-    background-color: #f9f9f9;
-    min-width: 160px;
-    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
-    z-index: 1000; /* Ensure it's above other elements */
-    padding: 5px 0;
+    background: #f9f9f9;
     border: 1px solid #ddd;
     border-radius: 4px;
+    min-width: 160px;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+    z-index: 1000;
 }
 
 .dropdown-content.show {
@@ -239,9 +171,7 @@ body {
 }
 
 .dropdown-content label {
-    color: black;
     padding: 8px 16px;
-    text-decoration: none;
     display: flex;
     align-items: center;
     gap: 8px;
@@ -249,69 +179,49 @@ body {
 }
 
 .dropdown-content label:hover {
-    background-color: #f1f1f1;
+    background: #f1f1f1;
 }
 
-/* --- Estilos do Line Pins --- */
-.frenquency-glyph-scroll-wrapper {
-    width: 100%;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    justify-content: center;
+/* =========================================================
+   SELEÇÃO & HOVER
+========================================================= */
+.row-hover rect {
+    fill: rgba(42, 143, 244, 0.2);
 }
 
-/* Ajuste para quando o LinePins é usado no painel lateral (single view) */
-#glyph-panel .plot-container {
-    width: 100%; /* Ocupa largura total do painel lateral */
-    margin: 0;
+.row-selected rect {
+    fill: rgba(46, 204, 113, 0.27);
 }
 
-.plot-container {
-    background: #fff;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    padding: 10px;
-    text-align: center;
-}
-/* --- Estilos de Interação e Seleção --- */
-
-/* Quando a linha ESQUERDA (nomes) é selecionada */
-
-.l-row.selected rect {
-    fill: #2ECC7144;
-}
-
-.l-row.selected text.label-id {
-    fill: #1b025b;      /* Cor de destaque mais harmoniosa */
+.l-row.selected text {
     font-weight: 700;
-    font-size: 11px;
 }
 
-/* Hover: Efeito ao passar o mouse sobre o nome */
-.l-row:hover rect,
 .l-row.hovered rect {
     fill: rgba(42, 143, 244, 0.2);
-    
 }
 
-.l-row.hovered text.label-id {
-    fill: #215b8a;
-    font-weight: 700;
-    font-size: 11px;
-}
-
-/* --- Tooltip --- */
+/* =========================================================
+   TOOLTIP
+========================================================= */
 .tooltip {
     position: absolute;
-    text-align: center;
     padding: 6px;
     font-size: 12px;
-    background: rgba(0, 0, 0, 0.8);
+    background: rgba(0, 0, 0, 0.85);
     color: #fff;
     border-radius: 4px;
     pointer-events: none;
     opacity: 0;
     transition: opacity 0.2s;
-    z-index: 1000;
+    z-index: 2000;
+}
+
+/* =========================================================
+   TRAJECTORY VIEW
+========================================================= */
+.trajectory-view-wrapper {
+    background: #fff;
+    border-radius: 6px;
+    overflow: hidden;
 }
