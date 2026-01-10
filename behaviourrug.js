@@ -148,7 +148,7 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
   // ==================================================
   // 3) Estrutura painéis
   // ==================================================
-  const leftWidth = VISUALIZATION_CONFIG.behaviourRug?.leftPanelWidth ?? 170;
+  const leftWidth = VISUALIZATION_CONFIG.behaviourRug?.leftPanelWidth ?? 70;
   const wrap = container.append("div")
     .attr("class", "behavior-rug-wrap")
     .style("display", "grid")

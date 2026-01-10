@@ -146,11 +146,23 @@ export function drawTrajectoryView(data, containerSelector, opts = {}) {
   const innerW = width - margin.left - margin.right;
   const innerH = height - margin.top - margin.bottom;
 
-  const pathsGroup = g.append("g").attr("class", "paths-group");
+  // Clip path for zooming
+  const clipId = `clip-${Math.random().toString(36).substr(2, 9)}`;
+  const defs = svg.append("defs");
+  defs.append("clipPath")
+      .attr("id", clipId)
+      .append("rect")
+      .attr("width", innerW)
+      .attr("height", innerH);
+
+  // Note: 'g' is already defined above
+
+  const pathsGroup = g.append("g")
+      .attr("class", "paths-group")
+      .attr("clip-path", `url(#${clipId})`);
 
   const xAxisG = g.append("g")
-    .attr("transform", `translate(0, ${innerH})
-`);
+    .attr("transform", `translate(0, ${innerH})`);
 
   const yAxisG = g.append("g");
 
@@ -236,6 +248,29 @@ export function drawTrajectoryView(data, containerSelector, opts = {}) {
              if (b.id === highlightId) return -1;
              return 0;
         });
+
+    // Zoom Behavior
+    const zoom = d3.zoom()
+      .scaleExtent([0.5, 50])
+      .extent([[0, 0], [innerW, innerH]])
+      .on("zoom", (event) => {
+        const newX = event.transform.rescaleX(xScale);
+        const newY = event.transform.rescaleY(yScale);
+
+        xAxisG.call(d3.axisBottom(newX).ticks(5));
+        yAxisG.call(d3.axisLeft(newY).ticks(5));
+
+        const newLine = d3.line()
+          .x(p => newX(p[0]))
+          .y(p => newY(p[1]));
+
+        pathsGroup.selectAll(".traj-path")
+          .attr("d", d => newLine(d.points));
+      });
+
+    // Apply zoom and reset to identity on update
+    svg.call(zoom).call(zoom.transform, d3.zoomIdentity);
+    svg.style("cursor", "move");
 
     // Title update
     let titleText;

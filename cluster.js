@@ -157,7 +157,7 @@ export function drawclusterMatrices(data, containerSelector, activeClusterIds = 
             .style("padding", "10px")
             .style("font-size", "12px")
             .style("color", "#777")
-            .text("Nenhum dado para os filtros atuais.");
+            .text("No data for the current filters.");
     }
 
     clusterResults.forEach(clusterData => {
