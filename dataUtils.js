@@ -101,3 +101,60 @@ export function hasLentoMotif(seq) {
 export function hasTurnMotif(seq) {
     return getTurnIndices(seq).size > 0;
 }
+
+export function getCustomMotifIndices(seq, pattern) {
+    const highlightIndices = new Set();
+    if (!pattern) return highlightIndices;
+
+    let steps = [];
+    if (typeof pattern === 'string') {
+        if (!pattern.trim()) return highlightIndices;
+        steps = pattern.trim().split(/\s+/).map(t => ({ raw: t }));
+    } else if (Array.isArray(pattern)) {
+        steps = pattern.filter(p => p.speed || p.dir);
+    }
+
+    if (steps.length === 0) return highlightIndices;
+
+    const k = steps.length;
+    for (let i = 0; i <= seq.length - k; i++) {
+        let match = true;
+        for (let j = 0; j < k; j++) {
+            if (!seq[i + j] || seq[i + j].empty) {
+                match = false;
+                break;
+            }
+            
+            const step = steps[j];
+            const item = seq[i + j];
+
+            if (step.raw) {
+                const itemToken = normalizeToken(item.raw);
+                if (!itemToken.includes(normalizeToken(step.raw))) {
+                    match = false;
+                    break;
+                }
+            } else {
+                if (step.speed && item.speed !== step.speed) {
+                    match = false;
+                    break;
+                }
+                if (step.dir && item.dir !== step.dir) {
+                    match = false;
+                    break;
+                }
+            }
+        }
+        if (match) {
+            for (let j = 0; j < k; j++) highlightIndices.add(i + j);
+        }
+    }
+    return highlightIndices;
+}
+
+export function hasCustomMotif(seq, pattern) {
+    if (!pattern) return false;
+    if (typeof pattern === 'string') return pattern.trim() !== "" && getCustomMotifIndices(seq, pattern).size > 0;
+    if (Array.isArray(pattern)) return pattern.some(p => p.speed || p.dir) && getCustomMotifIndices(seq, pattern).size > 0;
+    return false;
+}

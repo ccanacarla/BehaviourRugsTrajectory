@@ -46,6 +46,7 @@ function parseTrajectoryData(str) {
  * @param {string} [opts.highlightId] - ID of a trajectory to highlight in multi-view.
  * @param {Set} [opts.highlightLentoIndices]
  * @param {Set} [opts.highlightTurnIndices]
+ * @param {Set} [opts.highlightCustomIndices]
  */
 export function drawTrajectoryView(data, containerSelector, opts = {}) {
   const container = d3.select(containerSelector);
@@ -421,7 +422,7 @@ export function drawTrajectoryView(data, containerSelector, opts = {}) {
         endPoint.style("display", null)
             .attr("cx", xScale(pEnd[0])).attr("cy", yScale(pEnd[1]));
 
-        if (opts.highlightLentoIndices || opts.highlightTurnIndices) {
+        if (opts.highlightLentoIndices || opts.highlightTurnIndices || opts.highlightCustomIndices) {
             const hG = g.append("g").attr("class", "highlight-group");
             const drawHighlights = (indices, color, type) => {
                 if (!indices || indices.size === 0) return;
@@ -442,6 +443,7 @@ export function drawTrajectoryView(data, containerSelector, opts = {}) {
             };
             if (opts.highlightLentoIndices) drawHighlights(opts.highlightLentoIndices, "orange", "Very Slow");
             if (opts.highlightTurnIndices) drawHighlights(opts.highlightTurnIndices, "#9b59b6", "Abrupt Turn");
+            if (opts.highlightCustomIndices) drawHighlights(opts.highlightCustomIndices, "#16a085", "Custom Motif");
         }
     }
 

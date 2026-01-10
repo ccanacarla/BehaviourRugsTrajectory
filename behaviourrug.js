@@ -1,6 +1,6 @@
 import { VISUALIZATION_CONFIG, DIRECTION_STRINGS, CLUSTER_COLORS } from './config.js';
 import { eventManager } from './events.js';
-import { getSpeed, getDirection, getLentoIndices, getTurnIndices } from './dataUtils.js';
+import { getSpeed, getDirection, getLentoIndices, getTurnIndices, getCustomMotifIndices } from './dataUtils.js';
 
 /**
  * Draws the Behavior Rug visualization.
@@ -19,7 +19,10 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
   let sequences = [];
 
   // Initialize state from external config if available
-  let activeMotifs = config?.activeMotifs ? { ...config.activeMotifs } : { lento: false, turn: false };
+  let activeMotifs = config?.activeMotifs ? { ...config.activeMotifs } : { lento: false, turn: false, custom: [{}, {}, {}] };
+  if (!Array.isArray(activeMotifs.custom)) {
+    activeMotifs.custom = [{}, {}, {}];
+  }
 
   // ==================================================
   // 1) Preparação
@@ -126,6 +129,102 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
     render();
   });
 
+  // Custom Motif Builder
+  dropdownContent.append("div")
+    .style("border-top", "1px solid #eee")
+    .style("margin", "5px 0");
+
+  const motifBuilder = dropdownContent.append("div")
+    .attr("class", "motif-builder")
+    .on("click", e => e.stopPropagation());
+
+  motifBuilder.append("span")
+    .style("font-size", "11px")
+    .style("font-weight", "bold")
+    .text("Custom Motif Builder (max 3 steps):");
+
+  const speeds = ["Muito_Lento", "Lento", "Medio", "Rapido", "Muito_Rapido"];
+  const directions = ["N", "E", "S", "W"];
+
+  function updateMotifUI() {
+    motifBuilder.selectAll(".motif-step").remove();
+    motifBuilder.selectAll(".motif-apply-container").remove();
+
+    activeMotifs.custom.forEach((step, i) => {
+      const isPrevStepEmpty = i > 0 && !(activeMotifs.custom[i - 1].speed || activeMotifs.custom[i - 1].dir);
+      
+      const stepDiv = motifBuilder.append("div")
+        .attr("class", "motif-step")
+        .style("opacity", isPrevStepEmpty ? 0.5 : 1)
+        .style("pointer-events", isPrevStepEmpty ? "none" : "all");
+
+      const title = stepDiv.append("div").attr("class", "motif-step-title");
+      title.append("span").text(`Step ${i + 1}:`);
+      
+      if (step.speed || step.dir) {
+        title.append("span")
+          .attr("class", "motif-clear-btn")
+          .text("Clear")
+          .on("click", () => {
+            activeMotifs.custom[i] = {};
+            updateMotifUI();
+          });
+      }
+
+      // Speed buttons
+      const speedGroup = stepDiv.append("div").attr("class", "motif-button-group");
+      speeds.forEach(s => {
+        speedGroup.append("button")
+          .attr("class", `motif-btn ${step.speed === s ? "active" : ""}`)
+          .text(s.replace("_", " "))
+          .on("click", () => {
+            step.speed = (step.speed === s) ? null : s;
+            updateMotifUI();
+          });
+      });
+
+      // Direction buttons
+      const dirGroup = stepDiv.append("div").attr("class", "motif-button-group");
+      directions.forEach(d => {
+        dirGroup.append("button")
+          .attr("class", `motif-btn ${step.dir === d ? "active" : ""}`)
+          .text(d)
+          .on("click", () => {
+            step.dir = (step.dir === d) ? null : d;
+            updateMotifUI();
+          });
+      });
+    });
+
+    const applyContainer = motifBuilder.append("div").attr("class", "motif-apply-container");
+    const isAnyCustomActive = activeMotifs.custom.some(p => p.speed || p.dir);
+
+    applyContainer.append("button")
+      .attr("class", "dropdown-toggle")
+      .style("background", isAnyCustomActive ? "#164773" : "#ccc")
+      .style("color", "#fff")
+      .style("border", "none")
+      .style("cursor", isAnyCustomActive ? "pointer" : "not-allowed")
+      .attr("disabled", isAnyCustomActive ? null : true)
+      .text("Apply Motif Filter")
+      .on("click", () => {
+        notifyMotifConfig();
+        render();
+      });
+
+    applyContainer.append("span")
+      .attr("class", "motif-clear-btn")
+      .text("Clear All")
+      .on("click", () => {
+        activeMotifs.custom = [{}, {}, {}];
+        updateMotifUI();
+        notifyMotifConfig();
+        render();
+      });
+  }
+
+  updateMotifUI();
+
   dropdownBtn.on("click", function (event) {
     event.stopPropagation();
     const isVisible = dropdownContent.classed("show");
@@ -139,7 +238,8 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
   const legendLabel = controlsDiv.append("label")
     .style("font-size", "12px").style("cursor", "pointer")
     .style("display", "flex").style("align-items", "center").style("gap", "4px")
-    .style("margin-left", "auto").style("margin-right", "10px");
+    .style("margin-left", "auto")
+    .style("margin-right", "10px");
 
   const legendInput = legendLabel.append("input").attr("type", "checkbox").property("checked", false);
   legendLabel.append("span").text("Show Legend");
@@ -195,12 +295,17 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
 
     const datum = sequences.find(s => s.id === id);
     if (datum) {
+      console.log(datum.seq, activeMotifs.custom);
+      console.log(getCustomMotifIndices(datum.seq, activeMotifs.custom));
       eventManager.notify('TRAJECTORY_SELECTED', {
         trajectory: datum,
         options: {
           highlightLentoIndices: getLentoIndices(datum.seq, activeMotifs.lento),
-          highlightTurnIndices: getTurnIndices(datum.seq, activeMotifs.turn)
+          highlightTurnIndices: getTurnIndices(datum.seq, activeMotifs.turn),
+          highlightCustomIndices: getCustomMotifIndices(datum.seq, activeMotifs.custom)
         }
+        
+        
       });
     }
   }
@@ -306,6 +411,7 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
       const rowG = d3.select(this);
       const lentoIndices = getLentoIndices(rowData.seq, activeMotifs.lento);
       const turnIndices = getTurnIndices(rowData.seq, activeMotifs.turn);
+      const customIndices = getCustomMotifIndices(rowData.seq, activeMotifs.custom);
 
       const cells = rowG.selectAll(".g-cell")
         .data(rowData.seq).enter().append("g").attr("class", "g-cell")
@@ -314,24 +420,32 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
       cells.append("rect")
         .attr("width", cellSize).attr("height", cellSize)
         .attr("fill", (d, i) => {
+          if (customIndices.has(i)) return "#a2d9ce"; // Cyan-ish for Custom
           if (turnIndices.has(i)) return "#d2b4de";
           if (lentoIndices.has(i)) return "#fae3b1ff";
           return VISUALIZATION_CONFIG.cellBackgroundColor || "#fff";
         })
         .attr("stroke", (d, i) => {
+          if (customIndices.has(i)) return "#16a085";
           if (turnIndices.has(i)) return "#8e44ad";
           if (lentoIndices.has(i)) return "#fbbe63ff";
           return VISUALIZATION_CONFIG.cellBorderColor || "#ddd";
         })
-        .attr("stroke-width", (d, i) => (turnIndices.has(i) || lentoIndices.has(i)) ? 1.5 : (VISUALIZATION_CONFIG.cellBorderWidth ?? 0.5))
+        .attr("stroke-width", (d, i) => (turnIndices.has(i) || lentoIndices.has(i) || customIndices.has(i)) ? 1.5 : (VISUALIZATION_CONFIG.cellBorderWidth ?? 0.5))
         .each(function (d, i) {
           const el = d3.select(this);
           const isTurn = turnIndices.has(i);
           const isLento = lentoIndices.has(i);
-          if (isTurn || isLento) {
+          const isCustom = customIndices.has(i);
+          if (isTurn || isLento || isCustom) {
             el.on("mouseover", function (event) {
+              const parts = [];
+              if (isCustom) parts.push("Custom Motif");
+              if (isTurn) parts.push("Abrupt Turn");
+              if (isLento) parts.push("Very Slow");
+              
               const tooltip = d3.select("body").selectAll(".tooltip").data([0]).join("div").attr("class", "tooltip");
-              tooltip.text(`${isTurn ? "Abrupt Turn" : ""}${isTurn && isLento ? " & " : ""}${isLento ? "Very Slow" : ""}`)
+              tooltip.text(parts.join(" & "))
                 .style("opacity", 1).style("left", (event.pageX + 10) + "px").style("top", (event.pageY - 10) + "px");
             })
               .on("mousemove", function (event) { d3.select(".tooltip").style("left", (event.pageX + 10) + "px").style("top", (event.pageY - 10) + "px"); })

@@ -25,14 +25,16 @@ export function drawTSNE(data, containerSelector) {
         .append("g")
         .attr("transform", `translate(${margin.left},${margin.top})`);
 
-    /*// Title
+    // Title
     container.append("div")
+        .style("position", "absolute")
         .style("top", "5px")
         .style("left", "10px")
         .style("font-size", "12px")
         .style("font-weight", "bold")
         .style("pointer-events", "none")
-        .text("t-SNE Projection");*/
+        .style("z-index", "10")
+        .text("t-SNE");
 
     // Scales
     const xExtent = d3.extent(data, d => +d.tsne_1);

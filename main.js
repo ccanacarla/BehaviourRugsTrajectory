@@ -5,7 +5,7 @@ import { drawTrajectoryView as drawTrajectoryViewAll } from './trajectoryAll.js'
 import { eventManager } from './events.js';
 import { drawclusterMatrices } from './cluster.js';
 import { drawTSNE, updateTSNEHighlight } from './tsne.js';
-import { parseSequence, hasLentoMotif, hasTurnMotif } from './dataUtils.js';
+import { parseSequence, hasLentoMotif, hasTurnMotif, hasCustomMotif } from './dataUtils.js';
 import { CLUSTER_COLORS } from './config.js';
 
 let fullData;
@@ -54,6 +54,7 @@ eventManager.subscribe('MOTIF_CONFIG_CHANGED', config => {
 eventManager.subscribe('RESET_FILTERS', () => {
     filterState.clusterIds = null;
     filterState.tsneIds = null;
+    filterState.motifConfig = null;
     selectedTrajectory = null;
     applyFilters();
 });
@@ -76,11 +77,17 @@ function applyFilters() {
 
     if (filterState.motifConfig) {
         const { activeMotifs, column } = filterState.motifConfig;
-        if (activeMotifs.lento || activeMotifs.turn) {
+        const isCustomActive = activeMotifs.custom && (
+            (typeof activeMotifs.custom === 'string' && activeMotifs.custom.trim() !== "") ||
+            (Array.isArray(activeMotifs.custom) && activeMotifs.custom.some(p => p.speed || p.dir))
+        );
+
+        if (activeMotifs.lento || activeMotifs.turn || isCustomActive) {
             const f = d => {
                 const seq = parseSequence(d[column]);
                 if (activeMotifs.lento && !hasLentoMotif(seq)) return false;
                 if (activeMotifs.turn && !hasTurnMotif(seq)) return false;
+                if (isCustomActive && !hasCustomMotif(seq, activeMotifs.custom)) return false;
                 return true;
             };
             filteredForClusters = filteredForClusters.filter(f);
@@ -116,7 +123,10 @@ function applyFilters() {
 function showGlyphForTrajectory(traj, opts) {
     drawTrajectoryView([traj], '#trajectory-panel', {
         ...opts,
-        highlightId: traj.id || traj.trajectory_id
+        highlightId: traj.id || traj.trajectory_id,
+        highlightLentoIndices: opts.highlightLentoIndices,
+        highlightTurnIndices: opts.highlightTurnIndices,
+        highlightCustomIndices: opts.highlightCustomIndices
     });
 
     frequencyGlyph([traj], '#frequency-panel');
