@@ -107,7 +107,7 @@ function applyFilters() {
     currentFilteredData = filteredForRug;
 
     drawTrajectoryViewAll(currentFilteredData, '#trajectory-all-panel');
-    drawclusterMatrices(filteredForClusters, '#cluster-panel', filterState.clusterIds);
+    drawclusterMatrices(filteredForClusters, '#cluster-panel', filterState.clusterIds, fullData);
 
     if (activeFilters.length) {
         updateTSNEHighlight(currentFilteredData.map(d => d.trajectory_id), '#tsne-panel');
@@ -140,7 +140,7 @@ async function main() {
 
     drawTSNE(fullData, '#tsne-panel');
     drawTrajectoryViewAll(fullData, '#trajectory-all-panel');
-    drawclusterMatrices(fullData, '#cluster-panel');
+    drawclusterMatrices(fullData, '#cluster-panel', null, fullData);
 
     drawBehaviorRug(fullData, '#rug-panel');
 }

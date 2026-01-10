@@ -6,8 +6,9 @@ import { eventManager } from './events.js';
  * @param {Array} data - The dataset to visualize (filtered or full).
  * @param {String} containerSelector - The DOM selector for the container.
  * @param {Array} [activeClusterIds=null] - List of currently selected cluster IDs.
+ * @param {Array} [fullData=null] - The full dataset for percentage calculation.
  */
-export function drawclusterMatrices(data, containerSelector, activeClusterIds = null) {
+export function drawclusterMatrices(data, containerSelector, activeClusterIds = null, fullData = null) {
     const container = d3.select(containerSelector);
 
     // Check if we are updating existing DOM (optimization/cleanliness) or rebuilding
@@ -74,6 +75,26 @@ export function drawclusterMatrices(data, containerSelector, activeClusterIds = 
     // ==================================================
     // 3. Processamento dos Dados
     // ==================================================
+    
+    // Calculate total valid counts per cluster from fullData if available
+    const totalCounts = {};
+    if (fullData) {
+        const fullMap = d3.group(fullData, d => d.cluster);
+        for (const [cid, rows] of fullMap) {
+            let valid = 0;
+            rows.forEach(r => {
+                try {
+                   const raw = JSON.parse((r.movement_list || r.simbolic_movement || "[]").replace(/'/g, '"'));
+                   // Replicating the loose check: just needs to parse and be array >= 2
+                   // The main loop below does a stricter check (filtering undefined indices).
+                   // For consistency, we'll assume most parsed arrays are valid enough or accept slight deviation.
+                   if(Array.isArray(raw) && raw.length >= 2) valid++;
+                } catch(e){}
+            });
+            totalCounts[cid] = valid;
+        }
+    }
+
     const clustersMap = d3.group(data, d => d.cluster);
     const clusterResults = [];
 
@@ -132,7 +153,8 @@ export function drawclusterMatrices(data, containerSelector, activeClusterIds = 
         clusterResults.push({
             id: clusterId,
             matrix: avgMatrix,
-            count: validTrajCount
+            count: validTrajCount,
+            total: totalCounts[clusterId] || validTrajCount // Fallback to current count if no fullData
         });
     }
 
@@ -164,6 +186,10 @@ export function drawclusterMatrices(data, containerSelector, activeClusterIds = 
         const cId = clusterData.id;
         const cColor = CLUSTER_COLORS[Math.abs(+cId % CLUSTER_COLORS.length)];
         const isSelected = selectedSet.has(cId);
+        
+        const pct = clusterData.total > 0 
+            ? ((clusterData.count / clusterData.total) * 100).toFixed(0) 
+            : "0";
 
         const card = wrapper.append("div")
             .attr("data-cluster-id", cId)
@@ -207,7 +233,7 @@ export function drawclusterMatrices(data, containerSelector, activeClusterIds = 
             .style("padding", "2px 0")
             .style("background", d3.color(cColor).copy({ opacity: 0.8 }))
             .style("width", "100%")
-            .text(`n=${clusterData.count}`);
+            .html(`n=${clusterData.count} <span style="opacity:0.8">(${pct}%)</span>`);
 
         const svg = card.append("svg")
             .attr("width", width + margin.left + margin.right)

@@ -152,7 +152,7 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
 
     activeMotifs.custom.forEach((step, i) => {
       const isPrevStepEmpty = i > 0 && !(activeMotifs.custom[i - 1].speed || activeMotifs.custom[i - 1].dir);
-      
+
       const stepDiv = motifBuilder.append("div")
         .attr("class", "motif-step")
         .style("opacity", isPrevStepEmpty ? 0.5 : 1)
@@ -160,7 +160,7 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
 
       const title = stepDiv.append("div").attr("class", "motif-step-title");
       title.append("span").text(`Step ${i + 1}:`);
-      
+
       if (step.speed || step.dir) {
         title.append("span")
           .attr("class", "motif-clear-btn")
@@ -304,8 +304,8 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
           highlightTurnIndices: getTurnIndices(datum.seq, activeMotifs.turn),
           highlightCustomIndices: getCustomMotifIndices(datum.seq, activeMotifs.custom)
         }
-        
-        
+
+
       });
     }
   }
@@ -378,11 +378,17 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
       .attr("rx", 4)   // opcional: canto arredondado
       .attr("ry", 4)
       .attr("fill", d => CLUSTER_COLORS[Math.abs(+d.cluster % CLUSTER_COLORS.length)])
-      .attr("fill-opacity", 0.25)
-      .attr("stroke-width", 4);
+      .attr("fill-opacity", 0.25);
 
-    leftRows.append("text").attr("class", "label-id").attr("x", leftWidth - 10).attr("y", rowHeight / 2).attr("dy", ".35em")
-      .attr("text-anchor", "end").attr("font-size", 10).attr("fill", "#333").text(d => d.id);
+    leftRows.append("text")
+      .attr("class", "label-id")
+      .attr("x", leftWidth - 10)
+      .attr("y", rowHeight / 2)
+      .attr("dy", ".35em")
+      .attr("text-anchor", "end")
+      .attr("font-size", 10)
+      .attr("fill", "#333")
+      .text(d => d.id);
 
     const cx = cellSize / 2, cy = cellSize / 2;
     const pathN = `M0,0 L${cellSize},0 L${cx},${cy} Z`;
@@ -405,7 +411,11 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
       })
       .on("click", (e, d) => highlightRow(d.id));
 
-    rows.append("rect").attr("class", "row-bg").attr("width", rugWidth).attr("height", rowHeight).attr("fill", "transparent");
+    rows.append("rect")
+    .attr("class", "row-bg")
+    .attr("width", rugWidth)
+    .attr("height", rowHeight)
+    .attr("fill", "transparent");
 
     rows.each(function (rowData) {
       const rowG = d3.select(this);
@@ -443,7 +453,7 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
               if (isCustom) parts.push("Custom Motif");
               if (isTurn) parts.push("Abrupt Turn");
               if (isLento) parts.push("Very Slow");
-              
+
               const tooltip = d3.select("body").selectAll(".tooltip").data([0]).join("div").attr("class", "tooltip");
               tooltip.text(parts.join(" & "))
                 .style("opacity", 1).style("left", (event.pageX + 10) + "px").style("top", (event.pageY - 10) + "px");
