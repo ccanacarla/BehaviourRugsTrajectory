@@ -158,3 +158,50 @@ export function hasCustomMotif(seq, pattern) {
     if (Array.isArray(pattern)) return pattern.some(p => p.speed || p.dir) && getCustomMotifIndices(seq, pattern).size > 0;
     return false;
 }
+
+/**
+ * Parses trajectory string into an array of points [x, y].
+ */
+export function parseTrajectoryData(str) {
+  if (!str) return [];
+  if (Array.isArray(str)) return str;
+
+  const s = String(str).trim();
+  if (!s) return [];
+
+  const num = "[-+]?\\d*\\.?\\d+(?:[eE][-+]?\\d+)?";
+  const pairRe = new RegExp(`\\(\\s*(${num})\\s*,\\s*(${num})\\s*\\)`, "g");
+
+  const points = [];
+  let m;
+
+  while ((m = pairRe.exec(s)) !== null) {
+    const x = Number(m[1]);
+    const y = Number(m[2]);
+    if (Number.isFinite(x) && Number.isFinite(y)) points.push([x, y]);
+  }
+
+  if (!points.length) {
+    const allNums = s.match(new RegExp(num, "g")) || [];
+    for (let i = 0; i + 1 < allNums.length; i += 2) {
+      const x = Number(allNums[i]);
+      const y = Number(allNums[i + 1]);
+      if (Number.isFinite(x) && Number.isFinite(y)) points.push([x, y]);
+    }
+  }
+
+  return points;
+}
+
+export function calculateDuration(points) {
+    return points ? points.length : 0;
+}
+
+export function calculateStraightLineDistance(points) {
+    if (!points || points.length < 2) return 0;
+    const p1 = points[0];
+    const p2 = points[points.length - 1];
+    const dx = p2[0] - p1[0];
+    const dy = p2[1] - p1[1];
+    return Math.sqrt(dx*dx + dy*dy);
+}

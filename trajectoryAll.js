@@ -7,37 +7,7 @@
  */
 
 import { CLUSTER_COLORS } from './config.js';
-
-function parseTrajectoryData(str) {
-  if (!str) return [];
-  if (Array.isArray(str)) return str;
-
-  const s = String(str).trim();
-  if (!s) return [];
-
-  const num = "[-+]?\\d*\\.?\\d+(?:[eE][-+]?\\d+)?";
-  const pairRe = new RegExp(`\\(\\s*(${num})\\s*,\\s*(${num})\\s*\\)`, "g");
-
-  const points = [];
-  let m;
-
-  while ((m = pairRe.exec(s)) !== null) {
-    const x = Number(m[1]);
-    const y = Number(m[2]);
-    if (Number.isFinite(x) && Number.isFinite(y)) points.push([x, y]);
-  }
-
-  if (!points.length) {
-    const allNums = s.match(new RegExp(num, "g")) || [];
-    for (let i = 0; i + 1 < allNums.length; i += 2) {
-      const x = Number(allNums[i]);
-      const y = Number(allNums[i + 1]);
-      if (Number.isFinite(x) && Number.isFinite(y)) points.push([x, y]);
-    }
-  }
-
-  return points;
-}
+import { parseTrajectoryData } from './dataUtils.js';
 
 /**
  * Desenha a visualização da trajetória.

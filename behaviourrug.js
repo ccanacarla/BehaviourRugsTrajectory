@@ -1,6 +1,9 @@
 import { VISUALIZATION_CONFIG, DIRECTION_STRINGS, CLUSTER_COLORS } from './config.js';
 import { eventManager } from './events.js';
-import { getSpeed, getDirection, getLentoIndices, getTurnIndices, getCustomMotifIndices } from './dataUtils.js';
+import {
+  getSpeed, getDirection, getLentoIndices, getTurnIndices, getCustomMotifIndices,
+  parseTrajectoryData, calculateDuration, calculateStraightLineDistance
+} from './dataUtils.js';
 
 /**
  * Draws the Behavior Rug visualization.
@@ -43,6 +46,8 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
   }
 
   let currentKey = config?.column || smoothingCols[0];
+  let currentSort = "cluster"; // cluster, duration, distance
+  let sortDirection = "asc"; // asc, desc
 
   const sortedData = data.slice().sort((a, b) => {
     const cA = parseInt(a.cluster_markov ?? a.cluster, 10);
@@ -64,15 +69,50 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
     .style("gap", "15px")
     .style("flex-shrink", "0");
 
+  // Sort Controls
   controlsDiv.append("span")
-    .style("font-weight", "bold")
-    .style("font-size", "12px")
+    .text("Sort:");
+
+  const sortSelect = controlsDiv.append("select")
+    .attr("class", "dropdown-toggle")
+    .style("font-size", "11px")
+    .on("change", function () {
+      currentSort = this.value;
+      render();
+    });
+
+  const sortOptions = [
+    { label: "Cluster", value: "cluster" },
+    { label: "Duration", value: "duration" },
+    { label: "Distance", value: "distance" }
+  ];
+
+  sortOptions.forEach(opt => {
+    sortSelect.append("option")
+      .attr("value", opt.value).text(opt.label);
+  });
+
+  const sortDirSelect = controlsDiv.append("select")
+    .style("font-size", "11px")
+    .attr("class", "dropdown-toggle")
+    .style("margin-left", "5px")
+    .on("change", function () {
+      sortDirection = this.value;
+      render();
+    });
+
+  sortDirSelect.append("option").attr("value", "asc").text("Asc");
+  sortDirSelect.append("option").attr("value", "desc").text("Desc");
+
+  controlsDiv.append("div")
+    .attr("class", "divider");
+
+  controlsDiv.append("span")
     .text("Smoothing:");
 
   const radioGroup = controlsDiv.append("div")
-    .style("display", "flex")
-    .style("gap", "12px")
-    .style("flex-wrap", "wrap");
+    .attr("class", "rug-radio-group");
+
 
   smoothingCols.forEach(key => {
     const levelNum = key.split('_')[2];
@@ -98,7 +138,7 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
 
   // Dropdown for Motifs
   const dropdown = controlsDiv.append("div").attr("class", "dropdown");
-  const dropdownBtn = dropdown.append("button").attr("class", "dropdown-toggle").text("Filter by Motifs ▼");
+  const dropdownBtn = dropdown.append("button").attr("class", "dropdown-toggle").text("Filter by Motifs");
   const dropdownContent = dropdown.append("div").attr("class", "dropdown-content");
 
   function notifyMotifConfig() {
@@ -139,8 +179,6 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
     .on("click", e => e.stopPropagation());
 
   motifBuilder.append("span")
-    .style("font-size", "11px")
-    .style("font-weight", "bold")
     .text("Custom Motif Builder (max 3 steps):");
 
   const speeds = ["Muito_Lento", "Lento", "Medio", "Rapido", "Muito_Rapido"];
@@ -236,10 +274,8 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
   dropdownContent.on("click", function (event) { event.stopPropagation(); });
 
   const legendLabel = controlsDiv.append("label")
-    .style("font-size", "12px").style("cursor", "pointer")
-    .style("display", "flex").style("align-items", "center").style("gap", "4px")
-    .style("margin-left", "auto")
-    .style("margin-right", "10px");
+    .attr("class", "rug-legend-toggle");
+
 
   const legendInput = legendLabel.append("input").attr("type", "checkbox").property("checked", false);
   legendLabel.append("span").text("Show Legend");
@@ -262,13 +298,8 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
   const centerDiv = wrap.append("div").attr("class", "behavior-rug-center").style("overflow-x", "auto").style("overflow-y", "hidden");
 
   const rightDiv = container.append("div")
-    .attr("class", "behavior-rug-right")
-    .style("position", "absolute").style("right", "20px").style("top", "50px")
-    .style("height", "230px").style("width", "170px").style("z-index", "100")
-    .style("background", "rgba(255, 255, 255, 0.85)").style("border", "1px solid #ddd").style("border-radius", "6px")
-    .style("box-shadow", "0 4px 12px rgba(0,0,0,0.15)").style("padding", "10px").style("display", "none")
-    .style("max-height", "80%").style("overflow-y", "hidden").style("pointer-events", "auto");
-
+    .attr("class", "behavior-rug-right");
+    
   const leftSvg = leftDiv.append("svg").attr("class", "behavior-rug-svg");
   const centerSvg = centerDiv.append("svg").attr("class", "behavior-rug-svg");
   const rightSvg = rightDiv.append("svg").attr("class", "behavior-rug-svg");
@@ -334,6 +365,10 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
         }
       } catch (e) { }
 
+      const points = parseTrajectoryData(d.trajectory_xy);
+      const distance = calculateStraightLineDistance(points);
+      const duration = calculateDuration(points);
+
       return {
         id: d.trajectory_id,
         trajectory_id: d.trajectory_id,
@@ -341,10 +376,21 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
         seq,
         simbolic_movement: rawJson,
         raw: d,
+        distance,
+        duration
       };
     });
 
-    sequences.sort((a, b) => d3.ascending(a.cluster, b.cluster) || d3.ascending(a.id, b.id));
+    const multiplier = sortDirection === "asc" ? 1 : -1;
+
+    if (currentSort === "duration") {
+      sequences.sort((a, b) => (d3.ascending(a.duration, b.duration) * multiplier) || d3.ascending(a.cluster, b.cluster));
+    } else if (currentSort === "distance") {
+      sequences.sort((a, b) => (d3.ascending(a.distance, b.distance) * multiplier) || d3.ascending(a.cluster, b.cluster));
+    } else {
+      sequences.sort((a, b) => (d3.ascending(parseInt(a.cluster), parseInt(b.cluster)) * multiplier) || d3.ascending(a.id, b.id));
+    }
+
     if (!sequences.length) {
       centerSvg.append("text").attr("x", 20).attr("y", 50).text("Sem dados válidos.");
       return;
@@ -361,7 +407,7 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
 
     leftSvg.attr("width", leftWidth).attr("height", totalHeight);
     centerSvg.attr("width", rugWidth + 10).attr("height", totalHeight);
-    rightSvg.attr("width", VISUALIZATION_CONFIG.behaviourRug?.legendWidth ?? 220).attr("height", totalHeight);
+    rightSvg.attr("width", VISUALIZATION_CONFIG.behaviourRug?.legendWidth ?? 150).attr("height", totalHeight);
 
     const leftG = leftSvg.append("g").attr("transform", `translate(0, ${marginTop})`);
     const leftRows = leftG.selectAll(".l-row")
@@ -412,10 +458,10 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
       .on("click", (e, d) => highlightRow(d.id));
 
     rows.append("rect")
-    .attr("class", "row-bg")
-    .attr("width", rugWidth)
-    .attr("height", rowHeight)
-    .attr("fill", "transparent");
+      .attr("class", "row-bg")
+      .attr("width", rugWidth)
+      .attr("height", rowHeight)
+      .attr("fill", "transparent");
 
     rows.each(function (rowData) {
       const rowG = d3.select(this);
