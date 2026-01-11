@@ -442,9 +442,9 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
 
     leftRows.append("rect")
       .attr("x", 2)
-      .attr("y", 2)
+      .attr("y", 0)
       .attr("width", leftWidth - 2)
-      .attr("height", rowHeight - 2)
+      .attr("height", cellSize)
       .attr("rx", 4)   // opcional: canto arredondado
       .attr("ry", 4)
       .attr("fill", d => CLUSTER_COLORS[Math.abs(+d.cluster % CLUSTER_COLORS.length)])
@@ -453,7 +453,7 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
     leftRows.append("text")
       .attr("class", "label-id")
       .attr("x", leftWidth - 10)
-      .attr("y", rowHeight / 2)
+      .attr("y", cellSize / 2)
       .attr("dy", ".35em")
       .attr("text-anchor", "end")
       .attr("font-size", 10)
