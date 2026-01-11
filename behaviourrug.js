@@ -46,6 +46,7 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
   }
 
   let currentKey = config?.column || smoothingCols[0];
+  
   let currentSort = "cluster"; // cluster, duration, distance
   let sortDirection = "asc"; // asc, desc
 
@@ -81,16 +82,31 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
       render();
     });
 
-  const sortOptions = [
-    { label: "Cluster", value: "cluster" },
-    { label: "Duration", value: "duration" },
-    { label: "Distance", value: "distance" }
-  ];
+    const sortOptions = [
 
-  sortOptions.forEach(opt => {
-    sortSelect.append("option")
-      .attr("value", opt.value).text(opt.label);
-  });
+        { label: "Cluster", value: "cluster" },
+
+        { label: "Duration", value: "duration" },
+
+        { label: "Distance", value: "distance" },
+
+        { label: "Shannon Entropy", value: "shannon_entropy" },
+
+        { label: "Avg Dwell Time", value: "avg_dwell_time" },
+
+        { label: "High Speed Ratio", value: "high_speed_ratio" }
+
+    ];
+
+  
+
+    sortOptions.forEach(opt => {
+
+        sortSelect.append("option").attr("value", opt.value).text(opt.label);
+
+    });
+
+  
 
   const sortDirSelect = controlsDiv.append("select")
     .style("font-size", "11px")
@@ -377,21 +393,29 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
         simbolic_movement: rawJson,
         raw: d,
         distance,
-        duration
+        duration,
+        shannon_entropy: d.shannon_entropy,
+        avg_dwell_time: d.avg_dwell_time,
+        high_speed_ratio: d.high_speed_ratio
       };
     });
 
     const multiplier = sortDirection === "asc" ? 1 : -1;
 
-    if (currentSort === "duration") {
-      sequences.sort((a, b) => (d3.ascending(a.duration, b.duration) * multiplier) || d3.ascending(a.cluster, b.cluster));
-    } else if (currentSort === "distance") {
-      sequences.sort((a, b) => (d3.ascending(a.distance, b.distance) * multiplier) || d3.ascending(a.cluster, b.cluster));
-    } else {
-      sequences.sort((a, b) => (d3.ascending(parseInt(a.cluster), parseInt(b.cluster)) * multiplier) || d3.ascending(a.id, b.id));
-    }
-
-    if (!sequences.length) {
+        if (currentSort === "duration") {
+            sequences.sort((a, b) => (d3.ascending(a.duration, b.duration) * multiplier) || d3.ascending(a.cluster, b.cluster));
+        } else if (currentSort === "distance") {
+            sequences.sort((a, b) => (d3.ascending(a.distance, b.distance) * multiplier) || d3.ascending(a.cluster, b.cluster));
+        } else if (currentSort === "shannon_entropy") {
+            sequences.sort((a, b) => (d3.ascending(+a.shannon_entropy, +b.shannon_entropy) * multiplier) || d3.ascending(a.cluster, b.cluster));
+        } else if (currentSort === "avg_dwell_time") {
+            sequences.sort((a, b) => (d3.ascending(+a.avg_dwell_time, +b.avg_dwell_time) * multiplier) || d3.ascending(a.cluster, b.cluster));
+        } else if (currentSort === "high_speed_ratio") {
+            sequences.sort((a, b) => (d3.ascending(+a.high_speed_ratio, +b.high_speed_ratio) * multiplier) || d3.ascending(a.cluster, b.cluster));
+        } else {
+            sequences.sort((a, b) => (d3.ascending(parseInt(a.cluster), parseInt(b.cluster)) * multiplier) || d3.ascending(a.id, b.id));
+        }
+        if (!sequences.length) {
       centerSvg.append("text").attr("x", 20).attr("y", 50).text("Sem dados válidos.");
       return;
     }
@@ -441,6 +465,41 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
     const pathE = `M${cellSize},0 L${cellSize},${cellSize} L${cx},${cy} Z`;
     const pathS = `M${cellSize},${cellSize} L0,${cellSize} L${cx},${cy} Z`;
     const pathW = `M0,${cellSize} L0,0 L${cx},${cy} Z`;
+
+    // ==================================================
+    // Brush Implementation
+    // ==================================================
+    const brush = d3.brushY()
+        .extent([[0, 0], [leftWidth, sequences.length * rowHeight]])
+        .on("start brush end", brushed);
+
+    leftG.append("g")
+        .attr("class", "brush")
+        .call(brush);
+
+    function brushed({ selection }) {
+        if (!selection) {
+            eventManager.notify('RUG_BRUSH_CHANGED', { trajectoryIds: null });
+            leftRows.classed("selected", false); // Clear visual selection in rug
+            if (selectedTrajectoryId) highlightRow(selectedTrajectoryId); // Restore single selection if any
+            return;
+        }
+
+        const [y0, y1] = selection;
+        const selectedIds = [];
+
+        leftRows.classed("selected", d => {
+            const y = sequences.indexOf(d) * rowHeight;
+            const h = rowHeight;
+            // Check intersection (simple: center of row is inside brush)
+            // Or overlap: y < y1 && y + h > y0
+            const isSelected = y < y1 && y + h > y0;
+            if (isSelected) selectedIds.push(d.id);
+            return isSelected;
+        });
+
+        eventManager.notify('RUG_BRUSH_CHANGED', { trajectoryIds: selectedIds });
+    }
 
     const centerG = centerSvg.append("g").attr("transform", `translate(0, ${marginTop})`);
     const rows = centerG.selectAll(".row")

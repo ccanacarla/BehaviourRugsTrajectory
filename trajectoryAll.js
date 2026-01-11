@@ -17,6 +17,7 @@ import { parseTrajectoryData } from './dataUtils.js';
  * @param {Object} [opts]
  * @param {{x:[number,number], y:[number,number]}} [opts.fixedDomain]
  * @param {string} [opts.highlightId] - ID of a trajectory to highlight in multi-view.
+ * @param {Array|Set} [opts.highlightIds] - IDs of multiple trajectories to highlight.
  * @param {Set} [opts.highlightLentoIndices]
  * @param {Set} [opts.highlightTurnIndices]
  */
@@ -30,6 +31,7 @@ export function drawTrajectoryView(data, containerSelector, opts = {}) {
 
       const isMulti = rows.length > 1;
     const highlightId = opts.highlightId;
+    const highlightIds = opts.highlightIds ? new Set(opts.highlightIds) : null;
     const highlightColor = opts.highlightColor || "#ffeb3b";
   
   const wrapper = container.append("div")
@@ -146,6 +148,7 @@ export function drawTrajectoryView(data, containerSelector, opts = {}) {
         const val = r[currentKey] ? (r[currentKey].raw || r[currentKey]) : "";
         return {
             id: r.trajectory_id,
+            cluster: r.cluster,
             points: parseTrajectoryData(val)
         };
     }).filter(d => d.points.length > 0);
@@ -201,21 +204,28 @@ export function drawTrajectoryView(data, containerSelector, opts = {}) {
         .attr("d", d => line(d.points))
         .attr("stroke", d => {
             if (highlightId && d.id === highlightId) return highlightColor; // Selected: Dynamic color
+            if (highlightIds && highlightIds.has(d.id)) {
+                return CLUSTER_COLORS[Math.abs(+d.cluster % CLUSTER_COLORS.length)];
+            }
             return "#022fab";
         })
         .attr("stroke-width", d => {
              if (highlightId && d.id === highlightId) return 3; 
+             if (highlightIds && highlightIds.has(d.id)) return 2;
              return isMulti ? 1 : 2;
         })
         .attr("opacity", d => {
              if (highlightId && d.id === highlightId) return 1;
-             if (highlightId) return 0.1; // Dim others significantly
+             if (highlightIds && highlightIds.has(d.id)) return 1;
+             if (highlightId || highlightIds) return 0.1; // Dim others significantly
              return isMulti ? 0.5 : 1;
         })
         // Sort to ensure highlighted is on top
         .selection().sort((a, b) => {
-             if (a.id === highlightId) return 1;
-             if (b.id === highlightId) return -1;
+             const aH = (highlightId && a.id === highlightId) || (highlightIds && highlightIds.has(a.id));
+             const bH = (highlightId && b.id === highlightId) || (highlightIds && highlightIds.has(b.id));
+             if (aH && !bH) return 1;
+             if (!aH && bH) return -1;
              return 0;
         });
 

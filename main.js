@@ -59,6 +59,18 @@ eventManager.subscribe('RESET_FILTERS', () => {
     applyFilters();
 });
 
+eventManager.subscribe('RUG_BRUSH_CHANGED', ({ trajectoryIds }) => {
+    // Highlight in TSNE
+    updateTSNEHighlight(trajectoryIds, '#tsne-panel');
+    
+    // Highlight in Trajectory All
+    drawTrajectoryViewAll(currentFilteredData, '#trajectory-all-panel', {
+        highlightId: selectedTrajectory?.id, // Keep single selection if exists
+        highlightIds: trajectoryIds,
+        highlightColor: selectedTrajectory ? (selectedTrajectory.cluster !== undefined ? CLUSTER_COLORS[Math.abs(+selectedTrajectory.cluster % CLUSTER_COLORS.length)] : "#ffeb3b") : undefined
+    });
+});
+
 /* -------------------- FILTERS -------------------- */
 
 function applyFilters() {

@@ -110,6 +110,45 @@ export function frequencyGlyph(data, targetSelector = ".container") {
       .style("font-size", "12px")
       .style("font-weight", "normal");
 
+    if (isSingle) {
+        const formatMetric = (val) => {
+            const num = parseFloat(val);
+            return isNaN(num) ? "N/A" : num.toFixed(3);
+        };
+
+        const metricsDiv = plotDiv.append("div")
+            .style("margin-bottom", "10px")
+            .style("font-size", "11px")
+            .style("color", "#555");
+
+        const metrics = [
+            { label: "Shannon Entropy", value: d.shannon_entropy, desc: "Measures the uncertainty or diversity of movement states. Higher values indicate more varied behavior." },
+            { label: "Avg Dwell Time", value: d.avg_dwell_time, desc: "The average number of consecutive time steps spent in the same state (speed and direction)." },
+            { label: "High Speed Ratio", value: d.high_speed_ratio, desc: "The fraction of the total trajectory duration spent in high or very high speed states." }
+        ];
+
+        metrics.forEach(m => {
+            metricsDiv.append("div")
+                .style("cursor", "help")
+                .style("margin-bottom", "2px")
+                .html(`<strong>${m.label}:</strong> ${formatMetric(m.value)}`)
+                .on("mouseover", (event) => {
+                    const tooltip = d3.select("body").selectAll(".tooltip").data([0]).join("div").attr("class", "tooltip");
+                    tooltip.text(m.desc)
+                        .style("opacity", 1)
+                        .style("left", (event.pageX + 10) + "px")
+                        .style("top", (event.pageY - 10) + "px");
+                })
+                .on("mousemove", (event) => {
+                    d3.select(".tooltip")
+                        .style("left", (event.pageX + 10) + "px")
+                        .style("top", (event.pageY - 10) + "px");
+                })
+                .on("mouseout", () => {
+                    d3.select(".tooltip").style("opacity", 0);
+                });
+        });
+    }
 
     const svg = plotDiv.append("svg")
       .attr("width", size + 20)
