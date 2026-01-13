@@ -23,6 +23,13 @@ const filterState = {
 eventManager.subscribe('TRAJECTORY_SELECTED', ({ trajectory, options }) => {
     selectedTrajectory = trajectory;
 
+    if (!trajectory) {
+        drawTrajectoryView([], '#trajectory-panel');
+        frequencyGlyph([], '#frequency-panel');
+        drawTrajectoryViewAll(currentFilteredData, '#trajectory-all-panel', { highlightId: null });
+        return;
+    }
+
     showGlyphForTrajectory(trajectory, options, null);
 
     const clusterVal = trajectory.cluster ?? trajectory.raw?.cluster;
@@ -69,6 +76,13 @@ eventManager.subscribe('RUG_BRUSH_CHANGED', ({ trajectoryIds }) => {
         highlightIds: trajectoryIds,
         highlightColor: selectedTrajectory ? (selectedTrajectory.cluster !== undefined ? CLUSTER_COLORS[Math.abs(+selectedTrajectory.cluster % CLUSTER_COLORS.length)] : "#ffeb3b") : undefined
     });
+
+    // Update Cluster Panel
+    const dataForClusters = (trajectoryIds && trajectoryIds.length > 0)
+        ? currentFilteredData.filter(d => trajectoryIds.includes(d.trajectory_id))
+        : currentFilteredData;
+
+    drawclusterMatrices(dataForClusters, '#cluster-panel', filterState.clusterIds, fullData);
 });
 
 /* -------------------- FILTERS -------------------- */
@@ -147,14 +161,32 @@ function showGlyphForTrajectory(traj, opts) {
 /* -------------------- INIT -------------------- */
 
 async function main() {
-    fullData = await d3.csv('outputs/symbolic.csv');
-    currentFilteredData = fullData;
+    try {
+        fullData = await d3.csv('outputs/symbolic.csv');
+        if (!fullData || fullData.length === 0) throw new Error("Dataset is empty or failed to load.");
+        
+        currentFilteredData = fullData;
 
-    drawTSNE(fullData, '#tsne-panel');
-    drawTrajectoryViewAll(fullData, '#trajectory-all-panel');
-    drawclusterMatrices(fullData, '#cluster-panel', null, fullData);
+        drawTSNE(fullData, '#tsne-panel');
+        drawTrajectoryViewAll(fullData, '#trajectory-all-panel');
+        drawclusterMatrices(fullData, '#cluster-panel', null, fullData);
 
-    drawBehaviorRug(fullData, '#rug-panel');
+        drawBehaviorRug(fullData, '#rug-panel');
+    } catch (error) {
+        console.error("Initialization Error:", error);
+        d3.select("body").append("div")
+            .style("position", "fixed")
+            .style("top", "50%")
+            .style("left", "50%")
+            .style("transform", "translate(-50%, -50%)")
+            .style("background", "#ffcccc")
+            .style("color", "#990000")
+            .style("padding", "20px")
+            .style("border", "1px solid #cc0000")
+            .style("border-radius", "5px")
+            .style("box-shadow", "0 0 10px rgba(0,0,0,0.2)")
+            .html(`<strong>Error loading application:</strong><br>${error.message}`);
+    }
 }
 
 main();

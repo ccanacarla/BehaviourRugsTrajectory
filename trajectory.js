@@ -414,7 +414,7 @@ export function drawTrajectoryView(data, containerSelector, opts = {}) {
     // Title update
     let titleText;
     if (highlightId) {
-        titleText = `Trajectory ${highlightId} <br> (in context of ${parsedData.length})`;
+        titleText = `Trajectory ${highlightId}`;
     } else {
         titleText = isMulti ? `${parsedData.length} Trajectories Selected` : `Trajetória ID: ${rows[0].trajectory_id || rows[0].id}`;
     }

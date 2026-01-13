@@ -46,7 +46,7 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
   }
 
   let currentKey = config?.column || smoothingCols[0];
-  
+
   let currentSort = "cluster"; // cluster, duration, distance
   let sortDirection = "asc"; // asc, desc
 
@@ -61,69 +61,60 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
   // ==================================================
   const controlsHeight = 44;
   const controlsDiv = container.append("div")
-    .attr("class", "rug-controls")
-    .style("padding", "10px")
-    .style("background", "#ccccccff")
-    .style("border-bottom", "1px solid #ccc")
-    .style("display", "flex")
-    .style("align-items", "center")
-    .style("gap", "15px")
-    .style("flex-shrink", "0");
+    .attr("class", "rug-controls");
 
   // Sort Controls
-  controlsDiv.append("span")
-    .text("Sort:");
+  const sortControlGroup = controlsDiv.append("div")
+    .style("display", "flex")
+    .style("align-items", "center")
+    .style("gap", "0");
 
-  const sortSelect = controlsDiv.append("select")
+  sortControlGroup.append("span")
+    .text("Sort:")
+    .style("font-weight", "bold")
+    .style("margin-right", "5px");
+
+  const sortSelect = sortControlGroup.append("select")
     .attr("class", "dropdown-toggle")
-    .style("font-size", "11px")
     .on("change", function () {
       currentSort = this.value;
       render();
     });
 
-    const sortOptions = [
+  const sortOptions = [
+    { label: "Cluster", value: "cluster" },
+    { label: "Duration", value: "duration" },
+    { label: "Distance", value: "distance" },
+    { label: "Shannon Entropy", value: "shannon_entropy" },
+    { label: "Avg Dwell Time", value: "avg_dwell_time" },
+    { label: "High Speed Ratio", value: "high_speed_ratio" }
+  ];
 
-        { label: "Cluster", value: "cluster" },
 
-        { label: "Duration", value: "duration" },
+  sortOptions.forEach(opt => {
+    sortSelect.append("option")
+      .attr("value", opt.value)
+      .text(opt.label);
 
-        { label: "Distance", value: "distance" },
+  });
 
-        { label: "Shannon Entropy", value: "shannon_entropy" },
 
-        { label: "Avg Dwell Time", value: "avg_dwell_time" },
 
-        { label: "High Speed Ratio", value: "high_speed_ratio" }
-
-    ];
-
-  
-
-    sortOptions.forEach(opt => {
-
-        sortSelect.append("option").attr("value", opt.value).text(opt.label);
-
-    });
-
-  
-
-  const sortDirSelect = controlsDiv.append("select")
-    .style("font-size", "11px")
-    .attr("class", "dropdown-toggle")
-    .style("margin-left", "5px")
-    .on("change", function () {
-      sortDirection = this.value;
+  const sortDirBtn = sortControlGroup.append("button")
+    .attr("class", "sort-direction-btn")
+    .style("background", "transparent")
+    .text("⬆")
+    .on("click", function () {
+      sortDirection = sortDirection === "asc" ? "desc" : "asc";
+      d3.select(this).text(sortDirection === "asc" ? "⬆" : "⬇");
       render();
     });
-
-  sortDirSelect.append("option").attr("value", "asc").text("Asc");
-  sortDirSelect.append("option").attr("value", "desc").text("Desc");
 
   controlsDiv.append("div")
     .attr("class", "divider");
 
   controlsDiv.append("span")
+    .style("font-weight", "bold")
     .text("Smoothing:");
 
   const radioGroup = controlsDiv.append("div")
@@ -132,9 +123,7 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
 
   smoothingCols.forEach(key => {
     const levelNum = key.split('_')[2];
-    const label = radioGroup.append("label")
-      .style("font-size", "12px").style("cursor", "pointer")
-      .style("display", "flex").style("align-items", "center").style("gap", "4px");
+    const label = radioGroup.append("label");
 
     const input = label.append("input")
       .attr("type", "radio").attr("name", "rug_smoothing").attr("value", key)
@@ -155,7 +144,7 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
   // Dropdown for Motifs
   const dropdown = controlsDiv.append("div").attr("class", "dropdown");
   const dropdownBtn = dropdown.append("button").attr("class", "dropdown-toggle").text("Filter by Motifs");
-  const dropdownContent = dropdown.append("div").attr("class", "dropdown-content");
+  const dropdownContent = dropdown.append("div").style("background", "white").attr("class", "dropdown-content");
 
   function notifyMotifConfig() {
     eventManager.notify('MOTIF_CONFIG_CHANGED', {
@@ -231,6 +220,8 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
         speedGroup.append("button")
           .attr("class", `motif-btn ${step.speed === s ? "active" : ""}`)
           .text(s.replace("_", " "))
+          .on("mouseover", function() { d3.select(this).style("color", "black"); })
+          .on("mouseout", function() { d3.select(this).style("color", null); })
           .on("click", () => {
             step.speed = (step.speed === s) ? null : s;
             updateMotifUI();
@@ -243,6 +234,8 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
         dirGroup.append("button")
           .attr("class", `motif-btn ${step.dir === d ? "active" : ""}`)
           .text(d)
+          .on("mouseover", function() { d3.select(this); })
+          .on("mouseout", function() { d3.select(this).style("color", null); })
           .on("click", () => {
             step.dir = (step.dir === d) ? null : d;
             updateMotifUI();
@@ -261,6 +254,12 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
       .style("cursor", isAnyCustomActive ? "pointer" : "not-allowed")
       .attr("disabled", isAnyCustomActive ? null : true)
       .text("Apply Motif Filter")
+      .on("mouseover", function() {
+        if (isAnyCustomActive) d3.select(this).style("color", "white").style("background", "#205d92ff");
+      })
+      .on("mouseout", function() {
+        if (isAnyCustomActive) d3.select(this).style("color", "#fff").style("background", "#164773");
+      })
       .on("click", () => {
         notifyMotifConfig();
         render();
@@ -315,7 +314,7 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
 
   const rightDiv = container.append("div")
     .attr("class", "behavior-rug-right");
-    
+
   const leftSvg = leftDiv.append("svg").attr("class", "behavior-rug-svg");
   const centerSvg = centerDiv.append("svg").attr("class", "behavior-rug-svg");
   const rightSvg = rightDiv.append("svg").attr("class", "behavior-rug-svg");
@@ -335,7 +334,10 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
     selectedTrajectoryId = id;
     leftSvg.selectAll(".l-row").classed("selected", false).classed("hovered", false);
     centerSvg.selectAll(".row").classed("row-selected", false).classed("row-hover", false);
-    if (!id) return;
+    if (!id) {
+      eventManager.notify('TRAJECTORY_SELECTED', { trajectory: null, options: null });
+      return;
+    }
 
     leftSvg.selectAll(".l-row").filter(d => d.id === id).classed("selected", true);
     centerSvg.selectAll(".row").filter(d => d.id === id).classed("row-selected", true);
@@ -402,20 +404,20 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
 
     const multiplier = sortDirection === "asc" ? 1 : -1;
 
-        if (currentSort === "duration") {
-            sequences.sort((a, b) => (d3.ascending(a.duration, b.duration) * multiplier) || d3.ascending(a.cluster, b.cluster));
-        } else if (currentSort === "distance") {
-            sequences.sort((a, b) => (d3.ascending(a.distance, b.distance) * multiplier) || d3.ascending(a.cluster, b.cluster));
-        } else if (currentSort === "shannon_entropy") {
-            sequences.sort((a, b) => (d3.ascending(+a.shannon_entropy, +b.shannon_entropy) * multiplier) || d3.ascending(a.cluster, b.cluster));
-        } else if (currentSort === "avg_dwell_time") {
-            sequences.sort((a, b) => (d3.ascending(+a.avg_dwell_time, +b.avg_dwell_time) * multiplier) || d3.ascending(a.cluster, b.cluster));
-        } else if (currentSort === "high_speed_ratio") {
-            sequences.sort((a, b) => (d3.ascending(+a.high_speed_ratio, +b.high_speed_ratio) * multiplier) || d3.ascending(a.cluster, b.cluster));
-        } else {
-            sequences.sort((a, b) => (d3.ascending(parseInt(a.cluster), parseInt(b.cluster)) * multiplier) || d3.ascending(a.id, b.id));
-        }
-        if (!sequences.length) {
+    if (currentSort === "duration") {
+      sequences.sort((a, b) => (d3.ascending(a.duration, b.duration) * multiplier) || d3.ascending(a.cluster, b.cluster));
+    } else if (currentSort === "distance") {
+      sequences.sort((a, b) => (d3.ascending(a.distance, b.distance) * multiplier) || d3.ascending(a.cluster, b.cluster));
+    } else if (currentSort === "shannon_entropy") {
+      sequences.sort((a, b) => (d3.ascending(+a.shannon_entropy, +b.shannon_entropy) * multiplier) || d3.ascending(a.cluster, b.cluster));
+    } else if (currentSort === "avg_dwell_time") {
+      sequences.sort((a, b) => (d3.ascending(+a.avg_dwell_time, +b.avg_dwell_time) * multiplier) || d3.ascending(a.cluster, b.cluster));
+    } else if (currentSort === "high_speed_ratio") {
+      sequences.sort((a, b) => (d3.ascending(+a.high_speed_ratio, +b.high_speed_ratio) * multiplier) || d3.ascending(a.cluster, b.cluster));
+    } else {
+      sequences.sort((a, b) => (d3.ascending(parseInt(a.cluster), parseInt(b.cluster)) * multiplier) || d3.ascending(a.id, b.id));
+    }
+    if (!sequences.length) {
       centerSvg.append("text").attr("x", 20).attr("y", 50).text("Sem dados válidos.");
       return;
     }
@@ -438,7 +440,7 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
       .data(sequences).enter().append("g").attr("class", "l-row")
       .attr("transform", (d, i) => `translate(0, ${i * rowHeight})`)
       .style("cursor", "pointer")
-      .on("click", (e, d) => highlightRow(d.id));
+      .on("click", (e, d) => highlightRow(selectedTrajectoryId === d.id ? null : d.id));
 
     leftRows.append("rect")
       .attr("x", 2)
@@ -470,35 +472,35 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
     // Brush Implementation
     // ==================================================
     const brush = d3.brushY()
-        .extent([[0, 0], [leftWidth, sequences.length * rowHeight]])
-        .on("start brush end", brushed);
+      .extent([[0, 0], [leftWidth, sequences.length * rowHeight]])
+      .on("start brush end", brushed);
 
     leftG.append("g")
-        .attr("class", "brush")
-        .call(brush);
+      .attr("class", "brush")
+      .call(brush);
 
     function brushed({ selection }) {
-        if (!selection) {
-            eventManager.notify('RUG_BRUSH_CHANGED', { trajectoryIds: null });
-            leftRows.classed("selected", false); // Clear visual selection in rug
-            if (selectedTrajectoryId) highlightRow(selectedTrajectoryId); // Restore single selection if any
-            return;
-        }
+      if (!selection) {
+        eventManager.notify('RUG_BRUSH_CHANGED', { trajectoryIds: null });
+        leftRows.classed("selected", false); // Clear visual selection in rug
+        if (selectedTrajectoryId) highlightRow(selectedTrajectoryId); // Restore single selection if any
+        return;
+      }
 
-        const [y0, y1] = selection;
-        const selectedIds = [];
+      const [y0, y1] = selection;
+      const selectedIds = [];
 
-        leftRows.classed("selected", d => {
-            const y = sequences.indexOf(d) * rowHeight;
-            const h = rowHeight;
-            // Check intersection (simple: center of row is inside brush)
-            // Or overlap: y < y1 && y + h > y0
-            const isSelected = y < y1 && y + h > y0;
-            if (isSelected) selectedIds.push(d.id);
-            return isSelected;
-        });
+      leftRows.classed("selected", d => {
+        const y = sequences.indexOf(d) * rowHeight;
+        const h = rowHeight;
+        // Check intersection (simple: center of row is inside brush)
+        // Or overlap: y < y1 && y + h > y0
+        const isSelected = y < y1 && y + h > y0;
+        if (isSelected) selectedIds.push(d.id);
+        return isSelected;
+      });
 
-        eventManager.notify('RUG_BRUSH_CHANGED', { trajectoryIds: selectedIds });
+      eventManager.notify('RUG_BRUSH_CHANGED', { trajectoryIds: selectedIds });
     }
 
     const centerG = centerSvg.append("g").attr("transform", `translate(0, ${marginTop})`);
@@ -514,7 +516,7 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
         d3.select(this).classed("row-hover", false);
         leftSvg.selectAll(".l-row").filter(ld => ld.id === d.id).classed("hovered", false);
       })
-      .on("click", (e, d) => highlightRow(d.id));
+      .on("click", (e, d) => highlightRow(selectedTrajectoryId === d.id ? null : d.id));
 
     rows.append("rect")
       .attr("class", "row-bg")

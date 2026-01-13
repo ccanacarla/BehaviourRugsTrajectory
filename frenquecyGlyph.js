@@ -6,8 +6,6 @@ export function frequencyGlyph(data, targetSelector = ".container") {
 
   const isSingle = data.length === 1;
 
-  // Se for visualização única, não aplicamos altura fixa ou scroll wrapper forçado
-  // Se for múltiplo, usamos o wrapper para organizar o grid.
   let contentWrapper;
   
   if (isSingle) {
@@ -19,7 +17,7 @@ export function frequencyGlyph(data, targetSelector = ".container") {
     contentWrapper = container.append("div")
       .attr("class", "frenquency-glyph-scroll-wrapper")
       .style("width", "100%")
-      .style("max-height", "80vh") // Mantido apenas para a visualização "Grid completa"
+      .style("max-height", "80vh")
       .style("overflow-y", "auto");
   }
 
@@ -46,7 +44,6 @@ export function frequencyGlyph(data, targetSelector = ".container") {
     [DIRECTION_STRINGS.W]: 3
   };
 
-  // Helper de Caminho (Geometry)
   function getRegionPath(direction, level) {
     if (level === 0) return `M${-step},${-step} L${step},${-step} L${step},${step} L${-step},${step} Z`;
     
@@ -71,13 +68,11 @@ export function frequencyGlyph(data, targetSelector = ".container") {
     } catch (e) {}
     if (seq.length === 0 && !isSingle) return; 
 
-    // Agregação
     const counts = {}; 
     let maxCount = 0;
 
     seq.forEach(s => {
       if (!s) return;
-      // Detecção simples de string (pode ser otimizada com Regex ou includes)
       let spVal = -1, dirVal = -1;
 
       if (s.includes("Parado")) spVal = 0;
@@ -100,15 +95,93 @@ export function frequencyGlyph(data, targetSelector = ".container") {
       }
     });
 
-    // Render Container Individual
     const plotDiv = contentWrapper.append("div")
-      .attr("class", "plot-container");
+      .attr("class", "plot-container")
+      .style("display", "flex")
+      .style("flex-direction", "column")
+      .style("align-items", "center");
 
     plotDiv.append("h4")
       .html(`<strong>Frequency of states</strong><br>${d.trajectory_id}`)
-      .style("margin-bottom", "5px")
+      .style("margin-bottom", "10px")
       .style("font-size", "12px")
-      .style("font-weight", "normal");
+      .style("font-weight", "normal")
+      .style("text-align", "center");
+
+    const margin = 35;
+    const svg = plotDiv.append("svg")
+      .attr("width", size + margin)
+      .attr("height", size + margin);
+
+    const g = svg.append("g")
+      .attr("transform", `translate(${size / 2 + margin / 2}, ${size / 2 + margin / 2})`);
+
+    g.append("rect")
+      .attr("x", -half).attr("y", -half)
+      .attr("width", size).attr("height", size)
+      .attr("fill", VISUALIZATION_CONFIG.cellBackgroundColor)
+      .attr("stroke", VISUALIZATION_CONFIG.cellBorderColor);
+
+    const countP = counts["0"] || 0;
+    if (countP > 0) {
+      const pStep = half / VISUALIZATION_CONFIG.frenquencyGlyph.glyphLevels;
+      g.append("path")
+       .attr("d", `M${-pStep},${-pStep} L${pStep},${-pStep} L${pStep},${pStep} L${-pStep},${pStep} Z`)
+       .attr("fill", baseColor)
+       .attr("opacity", countP / maxCount);
+    }
+
+    for (let l = 1; l <= 3; l++) {
+      for (let dir = 0; dir < 4; dir++) {
+        const c = counts[`${l}_${dir}`] || 0;
+        if (c > 0) {
+          const innerR = l * step;
+          const outerR = (l + 1) * step;
+          let path = "";
+          if (dir === 0) path = `M${-innerR},${-innerR} L${innerR},${-innerR} L${outerR},${-outerR} L${-outerR},${-outerR} Z`;
+          if (dir === 1) path = `M${innerR},${-innerR} L${innerR},${innerR} L${outerR},${outerR} L${outerR},${-outerR} Z`;
+          if (dir === 2) path = `M${innerR},${innerR} L${-innerR},${innerR} L${-outerR},${outerR} L${outerR},${outerR} Z`;
+          if (dir === 3) path = `M${-innerR},${innerR} L${-innerR},${-innerR} L${-outerR},${-outerR} L${-outerR},${outerR} Z`;
+          
+          g.append("path")
+           .attr("d", path)
+           .attr("fill", baseColor)
+           .attr("opacity", c / maxCount)
+           .append("title").text(`Count: ${c}`);
+        }
+      }
+    }
+
+    const gridColor = VISUALIZATION_CONFIG.frenquencyGlyph.gridLineColor;
+    const gridW = VISUALIZATION_CONFIG.frenquencyGlyph.gridLineWidth;
+    
+    g.append("line").attr("x1", -half).attr("y1", -half).attr("x2", half).attr("y2", half).attr("stroke", gridColor).attr("stroke-width", gridW);
+    g.append("line").attr("x1", half).attr("y1", -half).attr("x2", -half).attr("y2", half).attr("stroke", gridColor).attr("stroke-width", gridW);
+    
+    for (let i = 1; i <= 4; i++) {
+        const r = i * step;
+        g.append("rect").attr("x", -r).attr("y", -r).attr("width", r*2).attr("height", r*2).attr("fill", "none").attr("stroke", gridColor).attr("stroke-width", gridW);
+    }
+
+    const labelOffset = half + 10;
+    const labels = [
+        { text: "N", x: 0, y: -labelOffset },
+        { text: "E", x: labelOffset, y: 0 },
+        { text: "S", x: 0, y: labelOffset },
+        { text: "W", x: -labelOffset, y: 0 }
+    ];
+
+    labels.forEach(l => {
+        g.append("text")
+            .attr("x", l.x)
+            .attr("y", l.y)
+            .attr("text-anchor", "middle")
+            .attr("dominant-baseline", "middle")
+            .style("font-size", "10px")
+            .style("fill", "#666")
+            .style("font-weight", "bold")
+            .text(l.text);
+    });
 
     if (isSingle) {
         const formatMetric = (val) => {
@@ -117,7 +190,10 @@ export function frequencyGlyph(data, targetSelector = ".container") {
         };
 
         const metricsDiv = plotDiv.append("div")
-            .style("margin-bottom", "10px")
+            .style("display", "flex")
+            .style("flex-direction", "column")
+            .style("align-items", "center")
+            .style("margin-top", "10px")
             .style("font-size", "11px")
             .style("color", "#555");
 
@@ -130,7 +206,8 @@ export function frequencyGlyph(data, targetSelector = ".container") {
         metrics.forEach(m => {
             metricsDiv.append("div")
                 .style("cursor", "help")
-                .style("margin-bottom", "2px")
+                .style("margin-bottom", "4px")
+                .style("text-align", "center")
                 .html(`<strong>${m.label}:</strong> ${formatMetric(m.value)}`)
                 .on("mouseover", (event) => {
                     const tooltip = d3.select("body").selectAll(".tooltip").data([0]).join("div").attr("class", "tooltip");
@@ -148,58 +225,6 @@ export function frequencyGlyph(data, targetSelector = ".container") {
                     d3.select(".tooltip").style("opacity", 0);
                 });
         });
-    }
-
-    const svg = plotDiv.append("svg")
-      .attr("width", size + 20)
-      .attr("height", size + 20);
-
-    const g = svg.append("g")
-      .attr("transform", `translate(${size / 2 + 10}, ${size / 2 + 10})`);
-
-    // Fundo
-    g.append("rect")
-      .attr("x", -half).attr("y", -half)
-      .attr("width", size).attr("height", size)
-      .attr("fill", VISUALIZATION_CONFIG.cellBackgroundColor)
-      .attr("stroke", VISUALIZATION_CONFIG.cellBorderColor);
-
-    // Desenha Níveis
-    // Nível 0 (Parado)
-    const countP = counts["0"] || 0;
-    if (countP > 0) {
-        g.append("path")
-         .attr("d", getRegionPath(null, 0))
-         .attr("fill", baseColor)
-         .attr("opacity", countP / maxCount);
-    }
-
-    // Níveis 1-3
-    for (let l = 1; l <= 3; l++) {
-      for (let dir = 0; dir < 4; dir++) {
-        const c = counts[`${l}_${dir}`] || 0;
-        if (c > 0) {
-            g.append("path")
-             .attr("d", getRegionPath(dir, l))
-             .attr("fill", baseColor)
-             .attr("opacity", c / maxCount)
-             .append("title").text(`Count: ${c}`);
-        }
-      }
-    }
-
-    // Grid Overlay (Linhas)
-    const gridColor = VISUALIZATION_CONFIG.frenquencyGlyph.gridLineColor;
-    const gridW = VISUALIZATION_CONFIG.frenquencyGlyph.gridLineWidth;
-    
-    // Diagonais
-    g.append("line").attr("x1", -half).attr("y1", -half).attr("x2", half).attr("y2", half).attr("stroke", gridColor).attr("stroke-width", gridW);
-    g.append("line").attr("x1", half).attr("y1", -half).attr("x2", -half).attr("y2", half).attr("stroke", gridColor).attr("stroke-width", gridW);
-    
-    // Quadrados concêntricos
-    for (let i = 1; i <= 4; i++) {
-        const r = i * step;
-        g.append("rect").attr("x", -r).attr("y", -r).attr("width", r*2).attr("height", r*2).attr("fill", "none").attr("stroke", gridColor).attr("stroke-width", gridW);
     }
   });
 }
