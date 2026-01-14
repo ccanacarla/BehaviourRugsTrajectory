@@ -18,7 +18,12 @@ export function drawTrajectoryView(data, containerSelector, opts = {}) {
 
   // Handle single item or array
   const rows = Array.isArray(data) ? data : [data];
-  if (rows.length === 0) return;
+  if (rows.length === 0 || (rows.length === 1 && !rows[0])) {
+    container.append("div")
+      .attr("class", "panel-placeholder")
+      .append("p").text("Select a trajectory");
+    return;
+  }
 
       const isMulti = rows.length > 1;
     const highlightId = opts.highlightId;
@@ -422,10 +427,6 @@ export function drawTrajectoryView(data, containerSelector, opts = {}) {
     wrapper.select(".chart-title").remove();
     wrapper.insert("div", "svg")
        .attr("class", "chart-title")
-       .style("text-align", "center")
-       .style("font-size", "11px")
-       .style("color", "#666")
-       .style("margin-bottom", "2px")
        .html(`${titleText}`);
   }
 

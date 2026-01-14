@@ -29,7 +29,7 @@ export const VISUALIZATION_CONFIG = {
   // Configuration specific to frenquencyGlyph.js
   frenquencyGlyph: {
     glyphSize: 160,          // Overall size of the aggregate glyph square
-    glyphLevels: 4,          // Number of speed levels (including Parado)
+    glyphLevels: 5,          // Number of speed levels (including Parado)
     gridLineColor: "#fafafaff",   // Color for internal grid lines (diagonals, concentric squares)
     gridLineWidth: 0.5,      // Width for internal grid lines
     plotContainerMargin: "10px", // Margin around each individual trajectory plot container
@@ -47,11 +47,11 @@ export const CLUSTER_COLORS = [
 
 // String literal mappings for speeds and directions, used in parsing logic
 export const SPEED_STRINGS = {
-  PARADO: "Parado",
+  MUITO_LENTO: "Muito_Lento",
   LENTO: "Lento",
   MEDIO: "Medio",
-  RAPIDO: "Rápido",
-  RAPIDO_ALT: "Rapido", // Alternative spelling
+  RAPIDO: "Rapido",
+  MUITO_RAPIDO: "Muito_Rapido", // Alternative spelling
 };
 
 export const DIRECTION_STRINGS = {

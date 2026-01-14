@@ -263,10 +263,6 @@ export function drawTrajectoryView(data, containerSelector, opts = {}) {
     wrapper.select(".chart-title").remove();
     wrapper.insert("div", "svg")
        .attr("class", "chart-title")
-       .style("text-align", "center")
-       .style("font-size", "11px")
-       .style("color", "#666")
-       .style("margin-bottom", "2px")
        .html(`${titleText}`);
   }
 
