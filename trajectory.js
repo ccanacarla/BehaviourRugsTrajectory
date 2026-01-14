@@ -226,7 +226,7 @@ export function drawTrajectoryView(data, containerSelector, opts = {}) {
 
   const tracker = g.append("circle")
     .attr("r", 5)
-    .attr("fill", "orange")
+    .attr("fill", "blue")
     .attr("stroke", "white")
     .attr("stroke-width", 1.5)
     .style("display", "none");
