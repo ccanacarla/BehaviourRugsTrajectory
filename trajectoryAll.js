@@ -184,8 +184,8 @@ export function drawTrajectoryView(data, containerSelector, opts = {}) {
       .x(p => xScale(p[0]))
       .y(p => yScale(p[1]));
 
-    xAxisG.transition().duration(250).call(d3.axisBottom(xScale).ticks(5));
-    yAxisG.transition().duration(250).call(d3.axisLeft(yScale).ticks(5));
+    xAxisG.call(d3.axisBottom(xScale).ticks(5));
+    yAxisG.call(d3.axisLeft(yScale).ticks(5));
 
     // Bind data to paths
     const paths = pathsGroup.selectAll(".traj-path")
@@ -199,8 +199,6 @@ export function drawTrajectoryView(data, containerSelector, opts = {}) {
         .attr("stroke-linecap", "round");
 
     pathsEnter.merge(paths)
-        .transition()
-        .duration(450)
         .attr("d", d => line(d.points))
         .attr("stroke", d => {
             if (highlightId && d.id === highlightId) return highlightColor; // Selected: Dynamic color

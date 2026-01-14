@@ -61,6 +61,10 @@ export function drawTrajectoryView(data, containerSelector, opts = {}) {
   let currentPointIndex = 0;
   let animationPoints = [];
   let animXScale, animYScale;
+  
+  const FPS = 5;
+  const frameInterval = 1000 / FPS;
+  let lastFrameTime = 0;
 
   // --- Grupo A: tipo de trajetória ---
   const trajGroup = controls.append("div")
@@ -241,19 +245,25 @@ export function drawTrajectoryView(data, containerSelector, opts = {}) {
       pauseAnimation();
       currentPointIndex = 0;
       if(timelineSlider) timelineSlider.property("value", 0);
-      tracker.style("display", "none");
+      
+      if (animationPoints.length > 0) {
+          updateTrackerPosition();
+          tracker.style("display", null);
+      } else {
+          tracker.style("display", "none");
+      }
   }
 
   function startAnimation() {
       if (!animationPoints.length) return;
       isPlaying = true;
       if(playBtn) playBtn.text("Pause");
-      tracker.style("display", null);
       
       if (currentPointIndex >= animationPoints.length - 1) {
           currentPointIndex = 0;
       }
-      animate();
+      lastFrameTime = performance.now();
+      animationId = requestAnimationFrame(animate);
   }
 
   function updateTrackerPosition() {
@@ -266,10 +276,17 @@ export function drawTrajectoryView(data, containerSelector, opts = {}) {
       if(timelineSlider) timelineSlider.property("value", currentPointIndex);
   }
 
-  function animate() {
+  function animate(currentTime) {
       if (!isPlaying) return;
-      updateTrackerPosition();
-      currentPointIndex++;
+      
+      const deltaTime = currentTime - lastFrameTime;
+
+      if (deltaTime >= frameInterval) {
+          updateTrackerPosition();
+          currentPointIndex++;
+          lastFrameTime = currentTime - (deltaTime % frameInterval);
+      }
+
       if (currentPointIndex < animationPoints.length) {
           animationId = requestAnimationFrame(animate);
       } else {
@@ -278,8 +295,6 @@ export function drawTrajectoryView(data, containerSelector, opts = {}) {
   }
 
   function updatePlot() {
-    stopAnimation();
-    
     // Parse all trajectories
     const parsedData = rows.map(d => {
         const r = d.raw || d;
@@ -291,6 +306,8 @@ export function drawTrajectoryView(data, containerSelector, opts = {}) {
     }).filter(d => d.points.length > 0);
 
     if (parsedData.length === 0) {
+      animationPoints = [];
+      stopAnimation();
       pathsGroup.selectAll("*").remove();
       return;
     }
@@ -301,6 +318,8 @@ export function drawTrajectoryView(data, containerSelector, opts = {}) {
     if (!isMulti) {
         animationPoints = parsedData[0].points;
         if(timelineSlider) timelineSlider.attr("max", animationPoints.length > 0 ? animationPoints.length - 1 : 0);
+    } else {
+        animationPoints = [];
     }
 
     // Determine domain
@@ -337,8 +356,8 @@ export function drawTrajectoryView(data, containerSelector, opts = {}) {
       .x(p => xScale(p[0]))
       .y(p => yScale(p[1]));
 
-    xAxisG.transition().duration(250).call(d3.axisBottom(xScale).ticks(5));
-    yAxisG.transition().duration(250).call(d3.axisLeft(yScale).ticks(5));
+    xAxisG.call(d3.axisBottom(xScale).ticks(5));
+    yAxisG.call(d3.axisLeft(yScale).ticks(5));
 
     // Bind data to paths
     const paths = pathsGroup.selectAll(".traj-path")
@@ -352,8 +371,6 @@ export function drawTrajectoryView(data, containerSelector, opts = {}) {
         .attr("stroke-linecap", "round");
 
     pathsEnter.merge(paths)
-        .transition()
-        .duration(450)
         .attr("d", d => line(d.points))
         .attr("stroke", d => {
             if (highlightId && d.id === highlightId) return highlightColor; // Selected: Dynamic color
@@ -428,6 +445,8 @@ export function drawTrajectoryView(data, containerSelector, opts = {}) {
     wrapper.insert("div", "svg")
        .attr("class", "chart-title")
        .html(`${titleText}`);
+
+    stopAnimation();
   }
 
   updatePlot();
