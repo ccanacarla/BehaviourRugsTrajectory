@@ -148,6 +148,7 @@ export function drawTrajectoryView(data, containerSelector, opts = {}) {
         const val = r[currentKey] ? (r[currentKey].raw || r[currentKey]) : "";
         return {
             id: r.trajectory_id,
+            user_id: r.user_id,
             cluster: r.cluster,
             points: parseTrajectoryData(val)
         };
@@ -253,9 +254,16 @@ export function drawTrajectoryView(data, containerSelector, opts = {}) {
     // Title update
     let titleText;
     if (highlightId) {
-        titleText = `Trajectory ${highlightId} <br> (in context of ${parsedData.length})`;
+        const h = parsedData.find(d => d.id === highlightId);
+        const uId = h ? h.user_id : "N/A";
+        titleText = `Trajectory: ${highlightId} | User: ${uId} <br> (in context of ${parsedData.length})`;
     } else {
-        titleText = isMulti ? `${parsedData.length} Trajectories Selected` : `Trajectory ID: ${rows[0].trajectory_id || rows[0].id}`;
+        if (isMulti) {
+            titleText = `${parsedData.length} Trajectories Selected`;
+        } else {
+            const r = rows[0].raw || rows[0];
+            titleText = `Trajectory ID: ${r.trajectory_id || r.id} | User ID: ${r.user_id}`;
+        }
     }
 
     wrapper.select(".chart-title").remove();

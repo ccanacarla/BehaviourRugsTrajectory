@@ -8,6 +8,7 @@ import { drawTSNE, updateTSNEHighlight } from './tsne.js';
 import { parseSequence, hasLentoMotif, hasTurnMotif, hasCustomMotif } from './dataUtils.js';
 import { CLUSTER_COLORS } from './config.js';
 import { initVideoPanel } from './videoPanel.js';
+import { generatePDFReport } from './reportGenerator.js';
 
 let fullData;
 let currentFilteredData = [];
@@ -188,6 +189,45 @@ async function main() {
         currentFilteredData = fullData;
 
         drawTSNE(fullData, '#tsne-panel');
+        drawTrajectoryViewAll(fullData, '#trajectory-all-panel');
+        
+        /*
+        // Add Report Button
+        const leftCol = d3.select('.left-column');
+        // Check if button already exists to avoid duplicates if re-run (though main runs once)
+        if (leftCol.select("#btn-pdf-report").empty()) {
+            leftCol.append("button")
+                .attr("id", "btn-pdf-report")
+                .attr("class", "rug-btn")
+                .style("margin-top", "10px") // Margin top since it's below
+                .style("padding", "8px")
+                .style("background", "#164773")
+                .style("color", "white")
+                .style("border", "none")
+                .style("border-radius", "4px")
+                .style("cursor", "pointer")
+                .style("font-size", "12px")
+                .style("font-weight", "bold")
+                .text("📄 Generate PDF Report")
+                .on("click", function() {
+                    const btn = d3.select(this);
+                    const originalText = btn.text();
+                    btn.text("Generating...").attr("disabled", true).style("background", "#ccc");
+                    
+                    // Allow UI to update before starting heavy task
+                    setTimeout(async () => {
+                        try {
+                            await generatePDFReport(filterState, currentFilteredData, selectedTrajectory);
+                        } catch (e) {
+                            console.error(e);
+                            alert("Failed to generate report: " + e.message);
+                        } finally {
+                            btn.text(originalText).attr("disabled", null).style("background", "#164773");
+                        }
+                    }, 50);
+                });
+        }*/
+
         applyFilters();
 
     } catch (error) {

@@ -263,26 +263,52 @@ export function drawclusterMatrices(data, containerSelector, activeClusterIds = 
         return;
     }
 
-    // Helper to generate dots using quintile thresholds
-    function createLikertDots(container, value, thresholds) {
-        const dotsContainer = container.append("div")
+    // Helper to generate compact progress bar with value and score using quintile thresholds
+    function createMetricBar(container, value, thresholds, maxValue) {
+        const barContainer = container.append("div")
             .style("display", "flex")
-            .style("gap", "2px");
+            .style("flex-direction", "row")
+            .style("align-items", "center")
+            .style("gap", "4px")
+            .style("flex", "1");
         
+        // Calculate score (1-5)
         let score = 1;
         if (value > thresholds[3]) score = 5;
         else if (value > thresholds[2]) score = 4;
         else if (value > thresholds[1]) score = 3;
         else if (value > thresholds[0]) score = 2;
         
-        for (let i = 1; i <= 5; i++) {
-            dotsContainer.append("div")
-                .style("width", "6px")
-                .style("height", "6px")
-                .style("border-radius", "50%")
-                .style("background-color", i <= score ? "#333" : "#ddd")
-                .style("border", "1px solid #ccc");
-        }
+        // Color scale: use the same as heatmap (white to baseColor)
+        const colorScale = d3.scaleSequential(t => d3.interpolateRgb("#ffffff", baseColor)(t))
+            .domain([1, 5]);
+        const barColor = colorScale(score);
+        
+        // Progress bar
+        const barWrapper = barContainer.append("div")
+            .style("flex", "0 1 35px")
+            .style("min-width", "25px")
+            .style("height", "8px")
+            .style("background", "#e0e0e0")
+            .style("border-radius", "2px")
+            .style("overflow", "hidden")
+            .style("position", "relative");
+        
+        const percentage = maxValue > 0 ? (value / maxValue) * 100 : 0;
+        barWrapper.append("div")
+            .style("height", "100%")
+            .style("width", percentage + "%")
+            .style("background", barColor)
+            .style("transition", "width 0.3s ease")
+            .style("border-radius", "2px");
+        
+        // Value label
+        barContainer.append("div")
+            .style("font-size", "8px")
+            .style("color", "#888")
+            .style("text-align", "right")
+            .style("min-width", "10px")
+            .text(value.toFixed(2));
     }
 
     clusterResults.forEach(clusterData => {
@@ -324,7 +350,7 @@ export function drawclusterMatrices(data, containerSelector, activeClusterIds = 
         // 1. Header (Full Width)
         const header = card.append("div")
             .style("background", d3.color(cColor).copy({ opacity: 0.8 }))
-            .style("color", "#000")
+            .style("color", "#333")
             .style("padding", "4px 0")
             .style("border-radius", "3px 3px 0 0")
             .style("width", "100%")
@@ -335,7 +361,7 @@ export function drawclusterMatrices(data, containerSelector, activeClusterIds = 
         header.append("div")
             .style("font-weight", "bold")            
             .style("font-size", "12px")
-            .style("color", "#000")
+            .style("color", "#333")
             .text(`Cluster ${cId}`);
 
         header.append("div")
@@ -347,14 +373,14 @@ export function drawclusterMatrices(data, containerSelector, activeClusterIds = 
         const contentRow = card.append("div")
             .style("display", "flex")
             .style("flex-direction", "row")
-            .style("padding", "8px");
+            .style("padding", "2px");
 
         // 2a. Left Side: Matrix
         const leftCol = contentRow.append("div")
             .style("display", "flex")
             .style("flex-direction", "column")
             .style("align-items", "center")
-            .style("margin-right", "12px");
+            .style("margin-right", "4px");
 
         const svg = leftCol.append("svg")
             .attr("width", width + margin.left + margin.right)
@@ -389,24 +415,37 @@ export function drawclusterMatrices(data, containerSelector, activeClusterIds = 
             .style("display", "flex")
             .style("flex-direction", "column")
             .style("justify-content", "center")
-            .style("font-size", "10px")
-            .style("gap", "4px")
-            .style("min-width", "85px");
+            .style("font-size", "9px")
+            .style("gap", "2px")
+            .style("min-width", "100px")
+            .style("flex", "1");
 
-        // Likert Metrics
-        const addMetricRow = (label, value, thresholds) => {
+        // Calculate max values for normalization
+        const maxSpeed = Math.max(...clusterResults.map(c => c.metrics.speed));
+        const maxDistance = Math.max(...clusterResults.map(c => c.metrics.distance));
+        const maxEntropy = Math.max(...clusterResults.map(c => c.metrics.entropy));
+        const maxDwell = Math.max(...clusterResults.map(c => c.metrics.dwell));
+
+        // Metric rows with labels and bars
+        const addMetricBar = (label, value, thresholds, maxVal) => {
             const row = rightCol.append("div")
                 .style("display", "flex")
-                .style("justify-content", "space-between")
-                .style("align-items", "center");
+                .style("flex-direction", "row")
+                .style("align-items", "center")
+                .style("gap", "1px");
             
-            row.append("span").text(label);
-            createLikertDots(row, value, thresholds);
+            row.append("span")
+                .style("font-size", "8px")
+                .style("line-height", "1.2")
+                .style("min-width", "35px")
+                .text(label);
+            
+            createMetricBar(row, value, thresholds, maxVal);
         };
 
-        addMetricRow("Speed", clusterData.metrics.speed, metricThresholds.speed);
-        addMetricRow("Dist", clusterData.metrics.distance, metricThresholds.distance);
-        addMetricRow("Entropy", clusterData.metrics.entropy, metricThresholds.entropy);
-        addMetricRow("Dwell", clusterData.metrics.dwell, metricThresholds.dwell);
+        addMetricBar("Speed", clusterData.metrics.speed, metricThresholds.speed, maxSpeed);
+        addMetricBar("Distance", clusterData.metrics.distance, metricThresholds.distance, maxDistance);
+        addMetricBar("Entropy", clusterData.metrics.entropy, metricThresholds.entropy, maxEntropy);
+        addMetricBar("Dwell", clusterData.metrics.dwell, metricThresholds.dwell, maxDwell);
     });
 }

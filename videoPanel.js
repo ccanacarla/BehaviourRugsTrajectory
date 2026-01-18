@@ -5,6 +5,7 @@ import { parseTrajectoryData } from './dataUtils.js';
 const TOTAL_VIDEO_FRAMES = 1470;
 
 export function initVideoPanel(containerSelector) {
+    console.log("Initializing Video Panel in:", containerSelector);
     const container = d3.select(containerSelector);
     container.html('');
 

@@ -104,6 +104,7 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
   const sortDirBtn = sortControlGroup.append("button")
     .attr("class", "sort-direction-btn")
     .style("background", "transparent")
+    .style("font-size", "14px")
     .text("⬆")
     .on("click", function () {
       sortDirection = sortDirection === "asc" ? "desc" : "asc";
