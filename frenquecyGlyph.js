@@ -18,7 +18,6 @@ export function frequencyGlyph(data, targetSelector = ".container") {
     .attr("class", "rug-controls")
     .style("justify-content", "space-between");
 
-
   controlsDiv.append("span")
     .style("font-size", "12px")
     .style("font-weight", "bold")
@@ -114,20 +113,9 @@ export function frequencyGlyph(data, targetSelector = ".container") {
   const step = half / VISUALIZATION_CONFIG.frenquencyGlyph.glyphLevels;
   const baseColor = "#050505ff";
 
-  const speedMap = {
-    [SPEED_STRINGS.MUITO_LENTO]: 0,
-    [SPEED_STRINGS.LENTO]: 1,
-    [SPEED_STRINGS.MEDIO]: 2,
-    [SPEED_STRINGS.RAPIDO]: 3,
-    [SPEED_STRINGS.MUITO_RAPIDO]: 4
-  };
-
-  const dirMap = {
-    [DIRECTION_STRINGS.N]: 0,
-    [DIRECTION_STRINGS.E]: 1,
-    [DIRECTION_STRINGS.S]: 2,
-    [DIRECTION_STRINGS.W]: 3
-  };
+  // Mapeamentos (usados internamente se necessário, mas a lógica abaixo usa string includes)
+  // const speedMap = { ... };
+  // const dirMap = { ... };
 
   function getRegionPath(direction, level) {
     const innerR = level * step;
@@ -186,11 +174,15 @@ export function frequencyGlyph(data, targetSelector = ".container") {
       .attr("class", "chart-title")
       .html(`Trajectory ${d.trajectory_id}`);
 
+    // Container que segura SVG e Métricas lado a lado
     const layoutDiv = plotDiv.append("div")
       .style("display", "flex")
-      .style("align-items", "center")
-      .style("gap", "0px");
+      .style("flex-direction", "row") // Garante linha
+      .style("align-items", "center") // Centraliza verticalmente
+      .style("justify-content", "center")
+      .style("gap", "20px"); // Espaço entre o Glifo e as Métricas
 
+    // --- Desenho do Glifo (SVG) ---
     const margin = 35;
     const svg = layoutDiv.append("svg")
       .attr("width", size + margin)
@@ -251,32 +243,34 @@ export function frequencyGlyph(data, targetSelector = ".container") {
         .text(l.text);
     });
 
+    // --- Métricas (Ao lado do SVG) ---
     if (isSingle) {
       const formatMetric = (val) => {
         const num = parseFloat(val);
         return isNaN(num) ? "N/A" : num.toFixed(3);
       };
 
-      const metricsDiv = plotDiv.append("div")
+      // Adicionamos ao layoutDiv em vez do plotDiv
+      const metricsDiv = layoutDiv.append("div")
         .style("display", "flex")
         .style("flex-direction", "column")
-        .style("align-items", "center")
-        .style("margin-top", "10px")
+        .style("align-items", "flex-start") // Alinha texto à esquerda
         .style("font-size", "11px")
-        .style("color", "#555");
+        .style("color", "#555")
+        .style("min-width", "120px"); // Garante uma largura mínima para as métricas
 
       const metrics = [
-        { label: "Shannon Entropy", value: d.shannon_entropy, desc: "Measures the uncertainty or diversity of movement states. Higher values indicate more varied behavior." },
-        { label: "Avg Dwell Time", value: d.avg_dwell_time, desc: "The average number of consecutive time steps spent in the same state (speed and direction)." },
-        { label: "High Speed Ratio", value: d.high_speed_ratio, desc: "The fraction of the total trajectory duration spent in high or very high speed states." }
+        { label: "Shannon Entropy", value: d.shannon_entropy, desc: "Measures the uncertainty or diversity of movement states." },
+        { label: "Avg Dwell Time", value: d.avg_dwell_time, desc: "The average number of consecutive time steps spent in the same state." },
+        { label: "High Speed Ratio", value: d.high_speed_ratio, desc: "The fraction of the total trajectory duration spent in high speed states." }
       ];
 
       metrics.forEach(m => {
         metricsDiv.append("div")
           .style("cursor", "help")
-          .style("margin-bottom", "4px")
-          .style("text-align", "center")
-          .html(`<strong>${m.label}:</strong> ${formatMetric(m.value)}`)
+          .style("margin-bottom", "6px")
+          .style("text-align", "left")
+          .html(`<strong>${m.label}:</strong><br>${formatMetric(m.value)}`)
           .on("mouseover", (event) => {
             const tooltip = d3.select("body").selectAll(".tooltip").data([0]).join("div").attr("class", "tooltip");
             tooltip.text(m.desc)

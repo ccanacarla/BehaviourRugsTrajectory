@@ -147,40 +147,39 @@ export function drawTrajectoryView(data, containerSelector, opts = {}) {
   });
 
   // --- Grupo C: Playback ---
-  let playBtn, timelineSlider;
+  let playBtn, progressBar;
   
   // Show playback if single OR if multi-view but highlighting one specific trajectory
-  // (Optional: for now, keep simplistic and only show play if truly single row passed, 
-  // or disable playback when viewing context to avoid confusion)
   if (!isMulti) {
-      const playbackGroup = controls.append("div")
-        .style("display", "flex")
-        .style("gap", "8px")
-        .style("align-items", "center");
+      const playbackContainer = controls.append("div")
+        .attr("class", "video-controls active")
+        .style("margin-top", "5px")
+        .style("padding", "0")
+        .style("border", "none")
+        .style("background", "transparent");
 
-      playBtn = playbackGroup.append("button")
-          .text("Play")
-          .style("cursor", "pointer")
-          .style("padding", "2px 6px")
-          .style("font-size", "10px");
+      playBtn = playbackContainer.append("button")
+          .attr("class", "video-btn")
+          .html("▶ Play");
 
-      timelineSlider = playbackGroup.append("input")
-          .attr("type", "range")
-          .attr("min", 0)
-          .attr("max", 100)
-          .attr("value", 0)
-          .style("flex-grow", "1")
-          .style("cursor", "pointer");
+      const progressTrack = playbackContainer.append("div")
+          .attr("class", "video-progress-track");
+
+      progressBar = progressTrack.append("div")
+          .attr("class", "video-progress-fill")
+          .style("width", "0%");
       
       playBtn.on("click", () => {
           if (isPlaying) pauseAnimation();
           else startAnimation();
       });
 
-      timelineSlider.on("input", function() {
-          const val = +this.value;
+      progressTrack.on("click", function(event) {
           if (!animationPoints.length) return;
-          currentPointIndex = val;
+          const rect = this.getBoundingClientRect();
+          const p = (event.clientX - rect.left) / rect.width;
+          const clampedP = Math.max(0, Math.min(1, p));
+          currentPointIndex = Math.floor(clampedP * (animationPoints.length - 1));
           updateTrackerPosition();
       });
   }
@@ -189,7 +188,7 @@ export function drawTrajectoryView(data, containerSelector, opts = {}) {
   // 2) Área do Plot
   // ==================================================
   const width = 420;
-  const height = 220;
+  const height = 170;
   const margin = { top: 0, right: 20, bottom: 10, left: 45 };
 
   const svg = wrapper.append("svg")
@@ -236,7 +235,7 @@ export function drawTrajectoryView(data, containerSelector, opts = {}) {
   // ==================================================
   function pauseAnimation() {
       isPlaying = false;
-      if(playBtn) playBtn.text("Play");
+      if(playBtn) playBtn.html("▶ Play");
       if (animationId) cancelAnimationFrame(animationId);
       animationId = null;
   }
@@ -244,7 +243,7 @@ export function drawTrajectoryView(data, containerSelector, opts = {}) {
   function stopAnimation() {
       pauseAnimation();
       currentPointIndex = 0;
-      if(timelineSlider) timelineSlider.property("value", 0);
+      if(progressBar) progressBar.style("width", "0%");
       
       if (animationPoints.length > 0) {
           updateTrackerPosition();
@@ -257,7 +256,7 @@ export function drawTrajectoryView(data, containerSelector, opts = {}) {
   function startAnimation() {
       if (!animationPoints.length) return;
       isPlaying = true;
-      if(playBtn) playBtn.text("Pause");
+      if(playBtn) playBtn.html("⏸ Pause");
       
       if (currentPointIndex >= animationPoints.length - 1) {
           currentPointIndex = 0;
@@ -273,7 +272,10 @@ export function drawTrajectoryView(data, containerSelector, opts = {}) {
              .attr("cx", animXScale(p[0]))
              .attr("cy", animYScale(p[1]));
       }
-      if(timelineSlider) timelineSlider.property("value", currentPointIndex);
+      if(progressBar && animationPoints.length > 0) {
+          const pct = currentPointIndex / (animationPoints.length - 1);
+          progressBar.style("width", `${pct * 100}%`);
+      }
   }
 
   function animate(currentTime) {
@@ -317,7 +319,6 @@ export function drawTrajectoryView(data, containerSelector, opts = {}) {
     // But for simplicity, animation/start/end is only for strict single mode.
     if (!isMulti) {
         animationPoints = parsedData[0].points;
-        if(timelineSlider) timelineSlider.attr("max", animationPoints.length > 0 ? animationPoints.length - 1 : 0);
     } else {
         animationPoints = [];
     }
@@ -347,7 +348,7 @@ export function drawTrajectoryView(data, containerSelector, opts = {}) {
     }
 
     const xScale = d3.scaleLinear().domain(xDomain).range([0, innerW]);
-    const yScale = d3.scaleLinear().domain(yDomain).range([innerH, 0]);
+    const yScale = d3.scaleLinear().domain(yDomain).range([0, innerH]);
 
     animXScale = xScale;
     animYScale = yScale;

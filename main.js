@@ -7,15 +7,18 @@ import { drawclusterMatrices } from './cluster.js';
 import { drawTSNE, updateTSNEHighlight } from './tsne.js';
 import { parseSequence, hasLentoMotif, hasTurnMotif, hasCustomMotif } from './dataUtils.js';
 import { CLUSTER_COLORS } from './config.js';
+import { initVideoPanel } from './videoPanel.js';
 
 let fullData;
 let currentFilteredData = [];
 let selectedTrajectory = null;
+let videoPanel;
 
 const filterState = {
     clusterIds: null,
     tsneIds: null,
-    motifConfig: null
+    motifConfig: null,
+    userId: null
 };
 
 /* -------------------- EVENTS -------------------- */
@@ -27,10 +30,11 @@ eventManager.subscribe('TRAJECTORY_SELECTED', ({ trajectory, options }) => {
         drawTrajectoryView([], '#trajectory-panel');
         frequencyGlyph([], '#frequency-panel');
         drawTrajectoryViewAll(currentFilteredData, '#trajectory-all-panel', { highlightId: null });
+        if (videoPanel) videoPanel.update(null);
         return;
     }
 
-    showGlyphForTrajectory(trajectory, options, null);
+    showGlyphForTrajectory(trajectory, options);
 
     const clusterVal = trajectory.cluster ?? trajectory.raw?.cluster;
     const highlightColor = clusterVal !== undefined
@@ -41,6 +45,8 @@ eventManager.subscribe('TRAJECTORY_SELECTED', ({ trajectory, options }) => {
         highlightId: trajectory.id || trajectory.trajectory_id,
         highlightColor
     });
+
+    if (videoPanel) videoPanel.update(trajectory, { highlightColor });
 });
 
 eventManager.subscribe('CLUSTERS_CHANGED', ({ clusterIds }) => {
@@ -58,26 +64,32 @@ eventManager.subscribe('MOTIF_CONFIG_CHANGED', config => {
     applyFilters();
 });
 
+eventManager.subscribe('USER_FILTER_CHANGED', ({ userId }) => {
+    filterState.userId = userId;
+    applyFilters();
+});
+
 eventManager.subscribe('RESET_FILTERS', () => {
     filterState.clusterIds = null;
     filterState.tsneIds = null;
     filterState.motifConfig = null;
+    filterState.userId = null;
     selectedTrajectory = null;
+    if (videoPanel) videoPanel.update(null);
     applyFilters();
 });
 
 eventManager.subscribe('RUG_BRUSH_CHANGED', ({ trajectoryIds }) => {
-    // Highlight in TSNE
     updateTSNEHighlight(trajectoryIds, '#tsne-panel');
     
-    // Highlight in Trajectory All
     drawTrajectoryViewAll(currentFilteredData, '#trajectory-all-panel', {
-        highlightId: selectedTrajectory?.id, // Keep single selection if exists
+        highlightId: selectedTrajectory?.id,
         highlightIds: trajectoryIds,
-        highlightColor: selectedTrajectory ? (selectedTrajectory.cluster !== undefined ? CLUSTER_COLORS[Math.abs(+selectedTrajectory.cluster % CLUSTER_COLORS.length)] : "#ffeb3b") : undefined
+        highlightColor: selectedTrajectory 
+            ? (selectedTrajectory.cluster !== undefined ? CLUSTER_COLORS[Math.abs(+selectedTrajectory.cluster % CLUSTER_COLORS.length)] : "#ffeb3b") 
+            : undefined
     });
 
-    // Update Cluster Panel
     const dataForClusters = (trajectoryIds && trajectoryIds.length > 0)
         ? currentFilteredData.filter(d => trajectoryIds.includes(d.trajectory_id))
         : currentFilteredData;
@@ -93,6 +105,12 @@ function applyFilters() {
     let filteredForClusters = fullData;
     let filteredForRug = fullData;
     let activeFilters = [];
+
+    if (filterState.userId) {
+        filteredForClusters = filteredForClusters.filter(d => d.user_id === filterState.userId);
+        filteredForRug = filteredForRug.filter(d => d.user_id === filterState.userId);
+        activeFilters.push('User');
+    }
 
     if (filterState.tsneIds?.length) {
         const ids = new Set(filterState.tsneIds);
@@ -135,26 +153,26 @@ function applyFilters() {
     drawTrajectoryViewAll(currentFilteredData, '#trajectory-all-panel');
     drawclusterMatrices(filteredForClusters, '#cluster-panel', filterState.clusterIds, fullData);
 
-    if (activeFilters.length) {
-        updateTSNEHighlight(currentFilteredData.map(d => d.trajectory_id), '#tsne-panel');
-    } else {
-        updateTSNEHighlight(null, '#tsne-panel');
-    }
+    updateTSNEHighlight(
+        activeFilters.length ? currentFilteredData.map(d => d.trajectory_id) : null, 
+        '#tsne-panel'
+    );
 
-    drawBehaviorRug(filteredForRug, '#rug-panel', filterState.motifConfig);
+    const allUserIds = Array.from(new Set(fullData.map(d => d.user_id))).sort((a, b) => a - b);
+    drawBehaviorRug(filteredForRug, '#rug-panel', { 
+        ...filterState.motifConfig, 
+        userId: filterState.userId,
+        allUserIds: allUserIds
+    });
 }
 
 /* -------------------- VIEWS -------------------- */
 
-function showGlyphForTrajectory(traj, opts) {
+function showGlyphForTrajectory(traj, opts = {}) {
     drawTrajectoryView([traj], '#trajectory-panel', {
         ...opts,
-        highlightId: traj.id || traj.trajectory_id,
-        highlightLentoIndices: opts.highlightLentoIndices,
-        highlightTurnIndices: opts.highlightTurnIndices,
-        highlightCustomIndices: opts.highlightCustomIndices
+        highlightId: traj.id || traj.trajectory_id
     });
-
     frequencyGlyph([traj], '#frequency-panel');
 }
 
@@ -162,16 +180,16 @@ function showGlyphForTrajectory(traj, opts) {
 
 async function main() {
     try {
+        videoPanel = initVideoPanel('#video-panel');
+
         fullData = await d3.csv('outputs/symbolic.csv');
         if (!fullData || fullData.length === 0) throw new Error("Dataset is empty or failed to load.");
-        
+
         currentFilteredData = fullData;
 
         drawTSNE(fullData, '#tsne-panel');
-        drawTrajectoryViewAll(fullData, '#trajectory-all-panel');
-        drawclusterMatrices(fullData, '#cluster-panel', null, fullData);
+        applyFilters();
 
-        drawBehaviorRug(fullData, '#rug-panel');
     } catch (error) {
         console.error("Initialization Error:", error);
         d3.select("body").append("div")
@@ -184,7 +202,6 @@ async function main() {
             .style("padding", "20px")
             .style("border", "1px solid #cc0000")
             .style("border-radius", "5px")
-            .style("box-shadow", "0 0 10px rgba(0,0,0,0.2)")
             .html(`<strong>Error loading application:</strong><br>${error.message}`);
     }
 }

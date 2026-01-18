@@ -178,7 +178,7 @@ export function drawTrajectoryView(data, containerSelector, opts = {}) {
     yDomain = [minY - yPad, maxY + yPad];
 
     const xScale = d3.scaleLinear().domain(xDomain).range([0, innerW]);
-    const yScale = d3.scaleLinear().domain(yDomain).range([innerH, 0]);
+    const yScale = d3.scaleLinear().domain(yDomain).range([0, innerH]);
 
     const line = d3.line()
       .x(p => xScale(p[0]))

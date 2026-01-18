@@ -145,7 +145,7 @@ position: absolute;
 
 .rug-controls {
     
-    background: #ccccccff;
+    background: #ccc;
     border-bottom: 1px solid #ccc;
     padding: 3px 10px 3px 10px;
     display: flex;
@@ -225,6 +225,15 @@ position: absolute;
 
 #tsne-panel {
     min-height: 280px;
+}
+
+#trajectory-panel {
+    flex: 1.2;
+}
+
+#frequency-panel {
+    flex: 0.8;
+    overflow: hidden;
 }
 
 #frequency-panel > div {
@@ -388,7 +397,112 @@ position: absolute;
     text-align: center;
     font-size: 11px;
     color: #666;
-    margin-bottom: 10px;
 }
 
+
+/* =========================================================
+   VIDEO PANEL & CONTROLS
+========================================================= */
+
+/* O container preto que engloba tudo */
+.video-player-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: #000;
+    overflow: hidden;
+}
+
+/* Área onde o vídeo e o canvas ficam */
+.video-view-area {
+    flex: 1;
+    width: 100%;
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: #ddd;
+    overflow: hidden;
+}
+
+/* Elemento Video e Canvas */
+.video-element {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.canvas-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+/* Legenda flutuante */
+.video-legend-overlay {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(0, 0, 0, 0.6);
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 11px;
+    color: white;
+    pointer-events: none;
+}
+
+/* Barra de controles inferior */
+.video-controls {
+    width: 100%;
+    padding: 3px 10px 3px 10px;
+    background: #ccc;
+    border-top: 1px solid #ccc;
+    display: none; /* Oculto por padrão */
+    justify-content: center;
+    align-items: center;
+    gap: 15px;
+    flex-shrink: 0;
+}
+
+.video-controls.active {
+    display: flex;
+}
+
+.video-btn {
+    background: #fff;
+    color: #000;
+    border: 1px solid #eee;
+    border-radius: 4px;
+    padding: 3px 10px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: background 0.2s;
+}
+
+.video-btn:hover {
+    background: #eee;
+}
+
+/* Barra de progresso */
+.video-progress-track {
+    flex: 1;
+    height: 6px;
+    background: #333;
+    border-radius: 3px;
+    position: relative;
+    max-width: 400px;
+    cursor: pointer; /* Preparado para clique futuro */
+}
+
+.video-progress-fill {
+    width: 0%;
+    height: 100%;
+    background: #646ec7;
+    border-radius: 3px;
+    transition: width 0.1s linear;
+}
 

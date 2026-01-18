@@ -28,7 +28,7 @@ export const VISUALIZATION_CONFIG = {
 
   // Configuration specific to frenquencyGlyph.js
   frenquencyGlyph: {
-    glyphSize: 160,          // Overall size of the aggregate glyph square
+    glyphSize: 80,          // Overall size of the aggregate glyph square
     glyphLevels: 5,          // Number of speed levels (including Parado)
     gridLineColor: "#fafafaff",   // Color for internal grid lines (diagonals, concentric squares)
     gridLineWidth: 0.5,      // Width for internal grid lines

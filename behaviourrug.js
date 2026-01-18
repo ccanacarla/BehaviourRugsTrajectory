@@ -15,6 +15,14 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
   const container = d3.select(containerSelector);
   container.selectAll("*").remove();
 
+  if (!data || data.length === 0) {
+    container.append("div")
+      .attr("class", "panel-placeholder")
+      .append("p")
+      .text("Select a trajectory");
+    return;
+  }
+
   // ==================================================
   // 0) Estado
   // ==================================================
@@ -37,13 +45,6 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
     const numB = parseInt(b.split('_')[2], 10) || 0;
     return numA - numB;
   });
-
-  if (smoothingCols.length === 0) {
-    container.append("div")
-      .attr("class", "panel-placeholder")
-      .text("Select a cluster to view the Behavior Rug visualization.");
-    return;
-  }
 
   let currentKey = config?.column || smoothingCols[0];
 
@@ -137,6 +138,36 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
       }
     });
     label.append("span").text(levelNum);
+  });
+
+  controlsDiv.append("div").style("width", "1px").style("height", "20px").style("background", "#ccc").style("margin", "0 10px");
+
+  // User Filter
+  const userFilterGroup = controlsDiv.append("div")
+    .style("display", "flex")
+    .style("align-items", "center")
+    .style("gap", "5px");
+
+  userFilterGroup.append("span")
+    .text("User:")
+    .style("font-weight", "bold");
+
+  const userIds = config?.allUserIds || Array.from(new Set(data.map(d => d.user_id))).sort((a, b) => a - b);
+  const userSelect = userFilterGroup.append("select")
+    .attr("class", "dropdown-toggle")
+    .on("change", function () {
+      eventManager.notify('USER_FILTER_CHANGED', { userId: this.value || null });
+    });
+
+  userSelect.append("option")
+    .attr("value", "")
+    .text("All");
+
+  userIds.forEach(id => {
+    userSelect.append("option")
+      .attr("value", id)
+      .property("selected", config?.userId === String(id))
+      .text(id);
   });
 
   controlsDiv.append("div").style("width", "1px").style("height", "20px").style("background", "#ccc").style("margin", "0 10px");
@@ -416,10 +447,6 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
       sequences.sort((a, b) => (d3.ascending(+a.high_speed_ratio, +b.high_speed_ratio) * multiplier) || d3.ascending(a.cluster, b.cluster));
     } else {
       sequences.sort((a, b) => (d3.ascending(parseInt(a.cluster), parseInt(b.cluster)) * multiplier) || d3.ascending(a.id, b.id));
-    }
-    if (!sequences.length) {
-      centerSvg.append("text").attr("x", 20).attr("y", 50).text("Sem dados válidos.");
-      return;
     }
 
     const cellSize = VISUALIZATION_CONFIG.cellSize ?? 12;
