@@ -111,8 +111,6 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
       render();
     });
 
-  controlsDiv.append("div")
-    .attr("class", "divider");
 
     /*
   controlsDiv.append("span")
@@ -175,7 +173,11 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
 
   // Dropdown for Motifs
   const dropdown = controlsDiv.append("div").attr("class", "dropdown");
-  const dropdownBtn = dropdown.append("button").attr("class", "dropdown-toggle").text("Filter by Motifs");
+  dropdown.append("span")
+    .style("font-weight", "bold")
+    .style("margin-right", "5px")
+    .text("Motif:");
+  const dropdownBtn = dropdown.append("button").attr("class", "dropdown-toggle").text("Build");
   const dropdownContent = dropdown.append("div").style("background", "white").attr("class", "dropdown-content");
 
   function notifyMotifConfig() {

@@ -189,7 +189,7 @@ export function drawTrajectoryView(data, containerSelector, opts = {}) {
   // ==================================================
   const width = 420;
   const height = 170;
-  const margin = { top: 0, right: 20, bottom: 10, left: 45 };
+  const margin = { top: 0, right: 25, bottom: 10, left: 45 };
 
   const svg = wrapper.append("svg")
     .attr("width", "100%")
@@ -375,7 +375,7 @@ export function drawTrajectoryView(data, containerSelector, opts = {}) {
         .attr("d", d => line(d.points))
         .attr("stroke", d => {
             if (highlightId && d.id === highlightId) return highlightColor; // Selected: Dynamic color
-            return "#022fab";
+            return "#646ec7";
         })
         .attr("stroke-width", d => {
              if (highlightId && d.id === highlightId) return 3; 

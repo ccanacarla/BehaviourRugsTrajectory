@@ -263,7 +263,7 @@ position: absolute;
     background:"transparent";
     border: 1px solid #ddd;
     border-radius: 4px;
-    overflow: hidden; 
+    overflow: auto; 
     min-width: 160px;
     box-shadow: 0 8px 16px rgba(0,0,0,0.2);
     z-index: 1000;
@@ -381,6 +381,7 @@ position: absolute;
 .motif-clear-btn {
     font-size: 9px;
     cursor: pointer;
+    color: #a11b03;
     text-decoration: underline;
 }
 
@@ -421,7 +422,7 @@ position: absolute;
     display: flex;
     justify-content: center;
     align-items: center;
-    background: #ddd;
+    background: #555;
     overflow: hidden;
 }
 
@@ -474,6 +475,7 @@ position: absolute;
 
 .video-btn {
     background: #fff;
+    width: 80px;
     color: #000;
     border: 1px solid #eee;
     border-radius: 4px;
