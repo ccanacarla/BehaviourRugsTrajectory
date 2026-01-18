@@ -1,8 +1,9 @@
 import { VISUALIZATION_CONFIG, CLUSTER_COLORS } from './config.js';
 import { eventManager } from './events.js';
+import { parseTrajectoryData, calculateStraightLineDistance } from './dataUtils.js';
 
 /**
- * Draws the cluster matrices (Markov transition probabilities).
+ * Draws the cluster matrices (Markov transition probabilities) and summary statistics.
  * @param {Array} data - The dataset to visualize (filtered or full).
  * @param {String} containerSelector - The DOM selector for the container.
  * @param {Array} [activeClusterIds=null] - List of currently selected cluster IDs.
@@ -11,15 +12,13 @@ import { eventManager } from './events.js';
 export function drawclusterMatrices(data, containerSelector, activeClusterIds = null, fullData = null) {
     const container = d3.select(containerSelector);
 
-    // Check if we are updating existing DOM (optimization/cleanliness) or rebuilding
-    // For now, simpler to rebuild since data shape changes with filters
     container.selectAll("*").remove();
 
     const wrapper = container.append("div")
         .attr("class", "cluster-grid-wrapper")
         .style("display", "flex")
         .style("flex-wrap", "wrap")
-        .style("gap", "8px")
+        .style("gap", "12px")
         .style("justify-content", "center")
         .style("padding", "10px");
 
@@ -76,8 +75,52 @@ export function drawclusterMatrices(data, containerSelector, activeClusterIds = 
     // 3. Processamento dos Dados
     // ==================================================
     
-    // Calculate total valid counts per cluster from fullData if available
+    // Global Analysis for Metric Reference (Quintiles)
+    const sourceData = fullData || data;
+    const globalMetrics = {
+        speed: [],
+        distance: [],
+        entropy: [],
+        dwell: []
+    };
+
+    sourceData.forEach(d => {
+        const s = parseFloat(d.high_speed_ratio || 0);
+        const e = parseFloat(d.shannon_entropy || 0);
+        const dw = parseFloat(d.avg_dwell_time || 0);
+        
+        if (!isNaN(s)) globalMetrics.speed.push(s);
+        if (!isNaN(e)) globalMetrics.entropy.push(e);
+        if (!isNaN(dw)) globalMetrics.dwell.push(dw);
+        
+        // Distance needs parsing
+        const pts = parseTrajectoryData(d.trajectory_xy);
+        const dist = calculateStraightLineDistance(pts);
+        if (!isNaN(dist)) globalMetrics.distance.push(dist);
+    });
+
+    // Helper to get quintile thresholds
+    const getThresholds = (arr) => {
+        arr.sort((a, b) => a - b);
+        if (arr.length === 0) return [0, 0, 0, 0];
+        return [
+            d3.quantile(arr, 0.2),
+            d3.quantile(arr, 0.4),
+            d3.quantile(arr, 0.6),
+            d3.quantile(arr, 0.8)
+        ];
+    };
+
+    const metricThresholds = {
+        speed: getThresholds(globalMetrics.speed),
+        distance: getThresholds(globalMetrics.distance),
+        entropy: getThresholds(globalMetrics.entropy),
+        dwell: getThresholds(globalMetrics.dwell)
+    };
+
+    // Total counts for global percentage
     const totalCounts = {};
+    let globalTotal = 0;
     if (fullData) {
         const fullMap = d3.group(fullData, d => d.cluster);
         for (const [cid, rows] of fullMap) {
@@ -85,14 +128,14 @@ export function drawclusterMatrices(data, containerSelector, activeClusterIds = 
             rows.forEach(r => {
                 try {
                    const raw = JSON.parse((r.movement_list || r.simbolic_movement || "[]").replace(/'/g, '"'));
-                   // Replicating the loose check: just needs to parse and be array >= 2
-                   // The main loop below does a stricter check (filtering undefined indices).
-                   // For consistency, we'll assume most parsed arrays are valid enough or accept slight deviation.
                    if(Array.isArray(raw) && raw.length >= 2) valid++;
                 } catch(e){}
             });
             totalCounts[cid] = valid;
+            globalTotal += valid;
         }
+    } else {
+        globalTotal = data.length;
     }
 
     const clustersMap = d3.group(data, d => d.cluster);
@@ -103,8 +146,33 @@ export function drawclusterMatrices(data, containerSelector, activeClusterIds = 
 
         const sumMatrix = Array(nStates).fill(0).map(() => Array(nStates).fill(0));
         let validTrajCount = 0;
+        
+        // Sums for averages
+        let sumSpeed = 0;
+        let sumDistance = 0;
+        let sumEntropy = 0;
+        let sumDwell = 0;
+        let countMetrics = 0;
 
         trajectories.forEach(traj => {
+            // Metrics Calculation
+            const speed = parseFloat(traj.high_speed_ratio || 0);
+            const entropy = parseFloat(traj.shannon_entropy || 0);
+            const dwell = parseFloat(traj.avg_dwell_time || 0);
+            
+            // Calculate distance on the fly if needed
+            const points = parseTrajectoryData(traj.trajectory_xy);
+            const dist = calculateStraightLineDistance(points);
+
+            if (!isNaN(speed) && !isNaN(entropy) && !isNaN(dwell) && !isNaN(dist)) {
+                sumSpeed += speed;
+                sumDistance += dist;
+                sumEntropy += entropy;
+                sumDwell += dwell;
+                countMetrics++;
+            }
+
+            // Matrix Calculation
             let seqRaw = [];
             try {
                 const rawStr = traj.movement_list || traj.simbolic_movement || "[]";
@@ -150,11 +218,23 @@ export function drawclusterMatrices(data, containerSelector, activeClusterIds = 
             }
         }
 
+        // Compute Cluster Averages
+        const avgSpeed = countMetrics > 0 ? sumSpeed / countMetrics : 0;
+        const avgDistance = countMetrics > 0 ? sumDistance / countMetrics : 0;
+        const avgEntropy = countMetrics > 0 ? sumEntropy / countMetrics : 0;
+        const avgDwell = countMetrics > 0 ? sumDwell / countMetrics : 0;
+
         clusterResults.push({
             id: clusterId,
             matrix: avgMatrix,
             count: validTrajCount,
-            total: totalCounts[clusterId] || validTrajCount // Fallback to current count if no fullData
+            total: totalCounts[clusterId] || validTrajCount,
+            metrics: {
+                speed: avgSpeed,
+                distance: avgDistance,
+                entropy: avgEntropy,
+                dwell: avgDwell
+            }
         });
     }
 
@@ -164,7 +244,7 @@ export function drawclusterMatrices(data, containerSelector, activeClusterIds = 
     // 4. Renderização
     // ==================================================
     const cellSize = 5;
-    const margin = { top: 10, right: 5, bottom: 0, left: 5 };
+    const margin = { top: 5, right: 5, bottom: 5, left: 5 };
     const width = nStates * cellSize;
     const height = nStates * cellSize;
 
@@ -180,6 +260,29 @@ export function drawclusterMatrices(data, containerSelector, activeClusterIds = 
             .style("font-size", "12px")
             .style("color", "#777")
             .text("No data for the current filters.");
+        return;
+    }
+
+    // Helper to generate dots using quintile thresholds
+    function createLikertDots(container, value, thresholds) {
+        const dotsContainer = container.append("div")
+            .style("display", "flex")
+            .style("gap", "2px");
+        
+        let score = 1;
+        if (value > thresholds[3]) score = 5;
+        else if (value > thresholds[2]) score = 4;
+        else if (value > thresholds[1]) score = 3;
+        else if (value > thresholds[0]) score = 2;
+        
+        for (let i = 1; i <= 5; i++) {
+            dotsContainer.append("div")
+                .style("width", "6px")
+                .style("height", "6px")
+                .style("border-radius", "50%")
+                .style("background-color", i <= score ? "#333" : "#ddd")
+                .style("border", "1px solid #ccc");
+        }
     }
 
     clusterResults.forEach(clusterData => {
@@ -187,26 +290,29 @@ export function drawclusterMatrices(data, containerSelector, activeClusterIds = 
         const cColor = CLUSTER_COLORS[Math.abs(+cId % CLUSTER_COLORS.length)];
         const isSelected = selectedSet.has(cId);
         
-        const pct = clusterData.total > 0 
-            ? ((clusterData.count / clusterData.total) * 100).toFixed(0) 
-            : "0";
+        // Calculate percentages
+        // 'n' is clusterData.count
+        // '%' is (n / globalTotal) * 100
+        const percentage = globalTotal > 0 
+            ? ((clusterData.count / globalTotal) * 100).toFixed(1) 
+            : "0.0";
 
         const card = wrapper.append("div")
             .attr("data-cluster-id", cId)
             .style("display", "flex")
-            .style("flex-direction", "column")
-            .style("align-items", "center")
-            .style("padding", "5px")
+            .style("flex-direction", "column") // Top-down layout
             .style("background", isSelected ? d3.color(cColor).copy({ opacity: 0.1 }) : "#fff")
             .style("border", isSelected ? `1px solid ${cColor}` : "1px solid #ddd")
             .style("border-radius", "4px")
             .style("box-shadow", "0 1px 2px rgba(0,0,0,0.05)")
             .style("cursor", "pointer")
+            .style("padding", "0") // Padding moved to internal containers
             .on("click", function () {
                 const newSet = new Set(selectedSet);
                 if (newSet.has(cId)) {
                     newSet.delete(cId);
-                } else {
+                }
+                else {
                     newSet.add(cId);
                 }
 
@@ -215,27 +321,42 @@ export function drawclusterMatrices(data, containerSelector, activeClusterIds = 
                 });
             });
 
-        card.append("div")
-            .style("font-weight", "bold")
-            .style("border-radius", "4px 4px 0 0")
-            .style("font-size", "11px")
-            .style("text-align", "center")   // <-- correção
+        // 1. Header (Full Width)
+        const header = card.append("div")
             .style("background", d3.color(cColor).copy({ opacity: 0.8 }))
+            .style("color", "#000")
+            .style("padding", "4px 0")
+            .style("border-radius", "3px 3px 0 0")
             .style("width", "100%")
-            .style("padding", "2px 0")
+            .style("text-align", "center")
+            .style("display", "flex")
+            .style("flex-direction", "column");
+
+        header.append("div")
+            .style("font-weight", "bold")            
+            .style("font-size", "12px")
+            .style("color", "#000")
             .text(`Cluster ${cId}`);
 
-
-        card.append("div")
+        header.append("div")
             .style("font-size", "9px")
-            .style("margin-bottom", "2px")
-            .style("text-align", "center")   // <-- correção
-            .style("padding", "2px 0")
-            .style("background", d3.color(cColor).copy({ opacity: 0.8 }))
-            .style("width", "100%")
-            .html(`n=${clusterData.count} <span style="opacity:0.8">(${pct}%)</span>`);
+            .style("opacity", "0.95")
+            .text(`n: ${clusterData.count} (${percentage}%)`);
 
-        const svg = card.append("svg")
+        // 2. Content Row (Matrix & Stats)
+        const contentRow = card.append("div")
+            .style("display", "flex")
+            .style("flex-direction", "row")
+            .style("padding", "8px");
+
+        // 2a. Left Side: Matrix
+        const leftCol = contentRow.append("div")
+            .style("display", "flex")
+            .style("flex-direction", "column")
+            .style("align-items", "center")
+            .style("margin-right", "12px");
+
+        const svg = leftCol.append("svg")
             .attr("width", width + margin.left + margin.right)
             .attr("height", height + margin.top + margin.bottom)
             .append("g")
@@ -263,27 +384,29 @@ export function drawclusterMatrices(data, containerSelector, activeClusterIds = 
             }
         }
 
-        svg.append("line")
-            .attr("x1", 0).attr("y1", 0)
-            .attr("x2", width).attr("y2", height)
-            .attr("stroke", "#333")
-            .attr("stroke-width", 0.5)
-            .attr("stroke-dasharray", "2,2")
-            .attr("opacity", 0.3)
-            .style("pointer-events", "none");
+        // 2b. Right Side: Statistics
+        const rightCol = contentRow.append("div")
+            .style("display", "flex")
+            .style("flex-direction", "column")
+            .style("justify-content", "center")
+            .style("font-size", "10px")
+            .style("gap", "4px")
+            .style("min-width", "85px");
 
-        /*svg.append("text").attr("x", -2).attr("y", cellSize / 2 + 2)
-            .text("P").style("font-size", "6px").attr("text-anchor", "end");
+        // Likert Metrics
+        const addMetricRow = (label, value, thresholds) => {
+            const row = rightCol.append("div")
+                .style("display", "flex")
+                .style("justify-content", "space-between")
+                .style("align-items", "center");
+            
+            row.append("span").text(label);
+            createLikertDots(row, value, thresholds);
+        };
 
-        svg.append("text").attr("x", cellSize / 2).attr("y", -2)
-            .text("P").style("font-size", "6px").attr("text-anchor", "middle");*/
-
-        /*svg.append("text")
-            .attr("x", width / 2)
-            .attr("y", height + 8)
-            .text("Destino")
-            .attr("text-anchor", "middle")
-            .attr("font-size", "7px")
-            .attr("fill", "#999");*/
+        addMetricRow("Speed", clusterData.metrics.speed, metricThresholds.speed);
+        addMetricRow("Dist", clusterData.metrics.distance, metricThresholds.distance);
+        addMetricRow("Entropy", clusterData.metrics.entropy, metricThresholds.entropy);
+        addMetricRow("Dwell", clusterData.metrics.dwell, metricThresholds.dwell);
     });
 }
