@@ -114,6 +114,7 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
   controlsDiv.append("div")
     .attr("class", "divider");
 
+    /*
   controlsDiv.append("span")
     .style("font-weight", "bold")
     .text("Smoothing:");
@@ -139,7 +140,7 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
     });
     label.append("span").text(levelNum);
   });
-
+*/
   controlsDiv.append("div").style("width", "1px").style("height", "20px").style("background", "#ccc").style("margin", "0 10px");
 
   // User Filter
