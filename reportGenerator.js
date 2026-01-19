@@ -1,5 +1,5 @@
 
-export async function generatePDFReport(filterState, filteredData, selectedTrajectory) {
+export async function generatePDFReport(filterState, filteredData, selectedTrajectory, userComment = "") {
     // Ensure jsPDF is available
     if (!window.jspdf) {
         console.error("jsPDF library not found. Ensure it is included in index.html");
@@ -36,6 +36,20 @@ export async function generatePDFReport(filterState, filteredData, selectedTraje
     doc.setTextColor(100);
     doc.text(`Generated on: ${new Date().toLocaleString()}`, margin, y);
     y += 15;
+
+    // --- USER COMMENT ---
+    if (userComment && userComment.trim()) {
+        checkPageBreak(30);
+        doc.setFontSize(11);
+        doc.setFont("helvetica", "italic");
+        doc.setTextColor(80);
+        const commentLines = doc.splitTextToSize(`Comment: ${userComment}`, pageWidth - (margin * 2));
+        doc.text(commentLines, margin, y);
+        y += (commentLines.length * lineHeight) + 5;
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(0);
+        y += 5;
+    }
 
     // --- SUMMARY STATISTICS ---
     checkPageBreak(60);

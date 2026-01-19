@@ -474,9 +474,9 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
       .on("click", (e, d) => highlightRow(selectedTrajectoryId === d.id ? null : d.id));
 
     leftRows.append("rect")
-      .attr("x", 2)
+      .attr("x", 10)
       .attr("y", 0)
-      .attr("width", leftWidth - 2)
+      .attr("width", leftWidth - 10)
       .attr("height", cellSize)
       .attr("rx", 4)   // opcional: canto arredondado
       .attr("ry", 4)

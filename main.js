@@ -135,8 +135,18 @@ function applyFilters() {
                 if (isCustomActive && !hasCustomMotif(seq, activeMotifs.custom)) return false;
                 return true;
             };
+            const beforeLength = filteredForRug.length;
             filteredForClusters = filteredForClusters.filter(f);
             filteredForRug = filteredForRug.filter(f);
+            
+            // If motif filter resulted in no trajectories, show error and reset
+            if (filteredForRug.length === 0) {
+                alert("No trajectories were found with this motif. The filter has been removed.");
+                filterState.motifConfig = null;
+                applyFilters(); // Recursively apply filters without motif
+                return;
+            }
+            
             activeFilters.push('Motifs');
         }
     }
@@ -212,12 +222,19 @@ async function main() {
                 .on("click", function() {
                     const btn = d3.select(this);
                     const originalText = btn.text();
+                    
+                    // Ask user for optional comment
+                    const userComment = prompt("Add a comment to the report (optional):", "");
+                    
+                    // If user cancelled (userComment === null), don't proceed
+                    if (userComment === null) return;
+                    
                     btn.text("Generating...").attr("disabled", true).style("background", "#ccc");
                     
                     // Allow UI to update before starting heavy task
                     setTimeout(async () => {
                         try {
-                            await generatePDFReport(filterState, currentFilteredData, selectedTrajectory);
+                            await generatePDFReport(filterState, currentFilteredData, selectedTrajectory, userComment);
                         } catch (e) {
                             console.error(e);
                             alert("Failed to generate report: " + e.message);
