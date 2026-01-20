@@ -279,10 +279,8 @@ export function drawclusterMatrices(data, containerSelector, activeClusterIds = 
         else if (value > thresholds[1]) score = 3;
         else if (value > thresholds[0]) score = 2;
         
-        // Color scale: use the same as heatmap (white to baseColor)
-        const colorScale = d3.scaleSequential(t => d3.interpolateRgb("#ffffff", baseColor)(t))
-            .domain([1, 5]);
-        const barColor = colorScale(score);
+        // Color: solid blue (no variation)
+        const barColor = "#999";
         
         // Progress bar
         const barWrapper = barContainer.append("div")

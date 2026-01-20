@@ -4,7 +4,7 @@ export const VISUALIZATION_CONFIG = {
   // Common constants for glyphs and cell rendering
   cellSize: 12,
   cellPadding: 1,
-  baseGlyphColor: "#083bbcff", // Main color for glyphs (e.g., triangles, circles)
+  baseGlyphColor: "#083bbc", // Main color for glyphs (e.g., triangles, circles)
   speedOpacity: { // Mapping of speed levels to opacity for glyphs
     Muito_Lento: 0,
     Lento: 0.35,
