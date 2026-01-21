@@ -87,6 +87,41 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
     return (isNaN(cA) ? 0 : cA) - (isNaN(cB) ? 0 : cB);
   });
 
+  const processedData = sortedData.map(d => {
+    let seq = [];
+    const rawJson = d[currentKey];
+    try {
+      if (rawJson) {
+        const jsonStr = String(rawJson).replace(/'/g, '"');
+        const rawSeq = JSON.parse(jsonStr);
+        if (Array.isArray(rawSeq)) {
+          seq = rawSeq.map(s => {
+            if (!s) return { empty: true };
+            return { raw: s, speed: getSpeed(s), dir: getDirection(s) };
+          });
+        }
+      }
+    } catch (e) { }
+
+    const points = parseTrajectoryData(d.trajectory_xy);
+    const distance = calculateStraightLineDistance(points);
+    const duration = calculateDuration(points);
+
+    return {
+      id: d.trajectory_id,
+      trajectory_id: d.trajectory_id,
+      cluster: d.cluster,
+      seq,
+      simbolic_movement: rawJson,
+      raw: d,
+      distance,
+      duration,
+      shannon_entropy: d.shannon_entropy,
+      avg_dwell_time: d.avg_dwell_time,
+      high_speed_ratio: d.high_speed_ratio
+    };
+  });
+
   // ==================================================
   // 2) Painel de Controles
   // ==================================================
@@ -530,40 +565,7 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
     centerSvg.selectAll("*").remove();
     rightSvg.selectAll("*").remove();
 
-    sequences = sortedData.map(d => {
-      let seq = [];
-      const rawJson = d[currentKey];
-      try {
-        if (rawJson) {
-          const jsonStr = String(rawJson).replace(/'/g, '"');
-          const rawSeq = JSON.parse(jsonStr);
-          if (Array.isArray(rawSeq)) {
-            seq = rawSeq.map(s => {
-              if (!s) return { empty: true };
-              return { raw: s, speed: getSpeed(s), dir: getDirection(s) };
-            });
-          }
-        }
-      } catch (e) { }
-
-      const points = parseTrajectoryData(d.trajectory_xy);
-      const distance = calculateStraightLineDistance(points);
-      const duration = calculateDuration(points);
-
-      return {
-        id: d.trajectory_id,
-        trajectory_id: d.trajectory_id,
-        cluster: d.cluster,
-        seq,
-        simbolic_movement: rawJson,
-        raw: d,
-        distance,
-        duration,
-        shannon_entropy: d.shannon_entropy,
-        avg_dwell_time: d.avg_dwell_time,
-        high_speed_ratio: d.high_speed_ratio
-      };
-    });
+    sequences = processedData.slice();
 
     const multiplier = sortDirection === "asc" ? 1 : -1;
 
