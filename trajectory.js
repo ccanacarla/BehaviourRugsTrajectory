@@ -188,7 +188,7 @@ export function drawTrajectoryView(data, containerSelector, opts = {}) {
   // 2) Área do Plot
   // ==================================================
   const width = 420;
-  const height = 170;
+  const height = 150;
   const margin = { top: 0, right: 25, bottom: 10, left: 45 };
 
   const svg = wrapper.append("svg")
@@ -411,28 +411,80 @@ export function drawTrajectoryView(data, containerSelector, opts = {}) {
         endPoint.style("display", null)
             .attr("cx", xScale(pEnd[0])).attr("cy", yScale(pEnd[1]));
 
-        if (opts.highlightLentoIndices || opts.highlightTurnIndices || opts.highlightCustomIndices) {
+        if (opts.highlightLentoIndices || opts.highlightTurnIndices || opts.highlightCustomIndices || opts.highlightSegmentInterval || (opts.customMotifs && opts.customMotifs.length > 0)) {
             const hG = g.append("g").attr("class", "highlight-group");
             const drawHighlights = (indices, color, type) => {
                 if (!indices || indices.size === 0) return;
                 points.forEach((p, i) => {
+                    const showTooltip = (event) => {
+                         const tooltip = d3.select("body").selectAll(".tooltip").data([0]).join("div").attr("class", "tooltip");
+                         tooltip.text(type)
+                            .style("opacity", 1)
+                            .style("left", (event.pageX + 10) + "px")
+                            .style("top", (event.pageY - 10) + "px");
+                    };
+                    const moveTooltip = (event) => {
+                        d3.select(".tooltip")
+                            .style("left", (event.pageX + 10) + "px")
+                            .style("top", (event.pageY - 10) + "px");
+                    };
+                    const hideTooltip = () => {
+                        d3.select(".tooltip").style("opacity", 0);
+                    };
+
                     if (i < points.length - 1 && indices.has(i) && indices.has(i + 1)) {
                         hG.append("line")
                             .attr("x1", xScale(p[0])).attr("y1", yScale(p[1]))
                             .attr("x2", xScale(points[i+1][0])).attr("y2", yScale(points[i+1][1]))
                             .attr("stroke", color).attr("stroke-width", 4)
-                            .attr("stroke-opacity", 0.6);
+                            .attr("stroke-opacity", 0.6)
+                            .style("cursor", "pointer")
+                            .on("mouseover", showTooltip)
+                            .on("mousemove", moveTooltip)
+                            .on("mouseout", hideTooltip);
                     }
                     if (indices.has(i)) {
                         hG.append("circle")
                             .attr("cx", xScale(p[0])).attr("cy", yScale(p[1]))
-                            .attr("r", 3).attr("fill", color);
+                            .attr("r", 3).attr("fill", color)
+                            .style("cursor", "pointer")
+                            .on("mouseover", showTooltip)
+                            .on("mousemove", moveTooltip)
+                            .on("mouseout", hideTooltip);
                     }
                 });
             };
             if (opts.highlightLentoIndices) drawHighlights(opts.highlightLentoIndices, "orange", "Very Slow");
             if (opts.highlightTurnIndices) drawHighlights(opts.highlightTurnIndices, "#9b59b6", "Abrupt Turn");
-            if (opts.highlightCustomIndices) drawHighlights(opts.highlightCustomIndices, "#16a085", "Custom Motif");
+            if (opts.highlightCustomIndices) {
+                const customColor = opts.customMotifColor || "#16a085";
+                const customName = opts.customMotifName || "Custom Motif";
+                drawHighlights(opts.highlightCustomIndices, customColor, customName);
+            }
+            if (opts.customMotifs && Array.isArray(opts.customMotifs)) {
+                opts.customMotifs.forEach(m => {
+                    if (m.indices && m.indices.size > 0) {
+                        drawHighlights(m.indices, m.color || "#16a085", m.name || "Custom Motif");
+                    }
+                });
+            }
+
+            if (opts.highlightSegmentInterval) {
+                const { startIndex, endIndex } = opts.highlightSegmentInterval;
+                if (startIndex != null && endIndex != null) {
+                    const start = Math.min(startIndex, endIndex);
+                    const end = Math.max(startIndex, endIndex);
+                    
+                    // Draw the segment path
+                    hG.append("path")
+                        .datum(points.slice(start, end + 1))
+                        .attr("d", line)
+                        .attr("fill", "none")
+                        .attr("stroke", highlightColor) // Use the cluster color
+                        .attr("stroke-width", 4)
+                        .attr("opacity", 1);
+                }
+            }
         }
     }
 

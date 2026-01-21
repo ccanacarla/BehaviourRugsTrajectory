@@ -153,12 +153,51 @@ export function getCustomMotifIndices(seq, pattern) {
 }
 
 export function hasCustomMotif(seq, pattern) {
-    if (!pattern) return false;
-    if (typeof pattern === 'string') return pattern.trim() !== "" && getCustomMotifIndices(seq, pattern).size > 0;
-    if (Array.isArray(pattern)) return pattern.some(p => p.speed || p.dir) && getCustomMotifIndices(seq, pattern).size > 0;
-    return false;
+  if (!pattern) return false;
+  // If pattern is a single motif configuration (array of steps) or a string
+  if (typeof pattern === 'string') return pattern.trim() !== "" && getCustomMotifIndices(seq, pattern).size > 0;
+  
+  // Check if it's an array of Motif Definitions (the new structure)
+  // Each element has { pattern: [...] }
+  // OR if it's just the old single motif pattern (Array of objects with speed/dir)
+  if (Array.isArray(pattern)) {
+      // Check if it's the old single pattern structure (steps)
+      const isSteps = pattern.length > 0 && (pattern[0].speed !== undefined || pattern[0].dir !== undefined || Object.keys(pattern[0]).length === 0);
+      
+      if (isSteps) {
+          return pattern.some(p => p.speed || p.dir) && getCustomMotifIndices(seq, pattern).size > 0;
+      } else {
+          // Assume it's an array of Motif Definitions (Multiple motifs)
+          // We return TRUE if ALL active motifs are present (AND logic for filtering)
+          // Filter out empty motifs first
+          const active = pattern.filter(m => m.pattern && m.pattern.some(p => p.speed || p.dir));
+          if (active.length === 0) return true; // No active filters implies pass? Or fail? Usually if custom is checked but empty, it's pass.
+          
+          return active.every(m => getCustomMotifIndices(seq, m.pattern).size > 0);
+      }
+  }
+  
+  return false;
 }
 
+export function getAllCustomMotifIndices(seq, customMotifs) {
+    const results = [];
+    if (!Array.isArray(customMotifs)) return results;
+    
+    customMotifs.forEach(m => {
+        if (m.pattern && m.pattern.some(p => p.speed || p.dir)) {
+            const indices = getCustomMotifIndices(seq, m.pattern);
+            if (indices.size > 0) {
+                results.push({
+                    indices: indices,
+                    color: m.color,
+                    name: m.name
+                });
+            }
+        }
+    });
+    return results;
+}
 /**
  * Parses trajectory string into an array of points [x, y].
  */

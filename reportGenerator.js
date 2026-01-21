@@ -114,13 +114,25 @@ export async function generatePDFReport(filterState, filteredData, selectedTraje
     }
 
     if (filterState.motifConfig) {
-        const m = filterState.motifConfig.activeMotifs;
+        const { activeMotifs } = filterState.motifConfig;
         const activeM = [];
-        if (m.lento) activeM.push("Lento");
-        if (m.turn) activeM.push("Turn");
-        if (m.custom) {
-            const customVal = typeof m.custom === 'string' ? m.custom : JSON.stringify(m.custom);
-             if (customVal && customVal !== '""' && customVal !== "[]") activeM.push(`Custom (${customVal})`);
+        if (activeMotifs.lento) activeM.push("Lento");
+        if (activeMotifs.turn) activeM.push("Turn");
+        
+        const isCustomActive = activeMotifs.custom && (
+            (typeof activeMotifs.custom === 'string' && activeMotifs.custom.trim() !== "") ||
+            (Array.isArray(activeMotifs.custom) && activeMotifs.custom.some(p => p.speed || p.dir)) ||
+            (Array.isArray(activeMotifs.custom) && activeMotifs.custom.length > 0 && activeMotifs.custom[0].pattern) // Check for array of motif objects
+        );
+
+        if (Array.isArray(activeMotifs.custom) && activeMotifs.custom.length > 0 && activeMotifs.custom[0].pattern) {
+             // New structure: Array of Motif Objects
+             activeMotifs.custom.forEach(m => {
+                 activeM.push(m.name || "Custom Motif");
+             });
+        } else if (isCustomActive) {
+            // Old structure or string
+            activeM.push(activeMotifs.customName || "Custom Motif");
         }
         
         if (activeM.length > 0) {

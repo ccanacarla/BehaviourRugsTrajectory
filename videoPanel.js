@@ -62,7 +62,7 @@ export function initVideoPanel(containerSelector) {
 
     // --- Contexto e Variáveis de Estado ---
     const ctx = canvas.node().getContext("2d");
-    let stopCurrentVideo = null;
+    let activeController = null;
 
     // --- Lógica de Redimensionamento (Aspect Fit) ---
     const resizeContent = () => {
@@ -109,9 +109,9 @@ export function initVideoPanel(containerSelector) {
     return {
         update: (trajectory, options) => {
             // Limpa vídeo anterior
-            if (stopCurrentVideo) {
-                stopCurrentVideo();
-                stopCurrentVideo = null;
+            if (activeController) {
+                activeController.stop();
+                activeController = null;
             }
 
             ctx.clearRect(0, 0, canvas.node().width, canvas.node().height);
@@ -132,7 +132,7 @@ export function initVideoPanel(containerSelector) {
             playPauseBtn.text("⏸ Pause");
 
             // Inicia Lógica do Vídeo
-            const controller = setupVideoLogic(
+            activeController = setupVideoLogic(
                 video.node(),
                 canvas.node(),
                 ctx,
@@ -145,9 +145,12 @@ export function initVideoPanel(containerSelector) {
                 }
             );
 
-            stopCurrentVideo = controller.stop;
-
-            playPauseBtn.on("click", () => controller.togglePause());
+            playPauseBtn.on("click", () => activeController.togglePause());
+        },
+        setSelection: (data) => {
+            if (activeController) {
+                activeController.setSelection(data);
+            }
         }
     };
 }
@@ -187,6 +190,7 @@ function setupVideoLogic(video, canvas, ctx, trajectory, options, callbacks) {
     }
 
     let requestCallbackId = null;
+    let selectionData = null;
 
     const onFrame = (now, metadata) => {
         if (!video.duration) {
@@ -236,6 +240,31 @@ function setupVideoLogic(video, canvas, ctx, trajectory, options, callbacks) {
                     ctx.strokeStyle = trailColor;
                     ctx.lineWidth = 2;
                     ctx.stroke();
+
+                    // --- HIGHLIGHT SELECTED SEGMENT ---
+                    if (selectionData && selectionData.startIndex !== null && selectionData.endIndex !== null) {
+                        const startIdx = Math.max(0, selectionData.startIndex);
+                        const endIdx = Math.min(pointIndex, selectionData.endIndex);
+
+                        if (startIdx < endIdx) {
+                             ctx.beginPath();
+                             const pStart = points[startIdx];
+                             ctx.moveTo(
+                                 isNormalized ? pStart[0] * w : pStart[0],
+                                 isNormalized ? pStart[1] * h : pStart[1]
+                             );
+                             for (let i = startIdx + 1; i <= endIdx; i++) {
+                                 const p = points[i];
+                                 ctx.lineTo(
+                                     isNormalized ? p[0] * w : p[0],
+                                     isNormalized ? p[1] * h : p[1]
+                                 );
+                             }
+                             ctx.strokeStyle = clusterColor; // Opaque color
+                             ctx.lineWidth = 4; // Thicker line
+                             ctx.stroke();
+                        }
+                    }
                 }
 
                 // Desenha Objeto (Retângulo)
@@ -246,6 +275,33 @@ function setupVideoLogic(video, canvas, ctx, trajectory, options, callbacks) {
                 ctx.strokeStyle = clusterColor;
                 ctx.lineWidth = 2;
                 ctx.strokeRect(x - 15, y - 15, 30, 30);
+
+                // --- TEXT OVERLAY ---
+                ctx.save();
+                ctx.fillStyle = "white";
+                ctx.strokeStyle = "black";
+                ctx.lineWidth = 3;
+                ctx.font = "bold 16px sans-serif";
+                ctx.textBaseline = "top";
+
+                const textLines = [
+                    `Frame: ${currentGlobalFrame}`,
+                    `Segment: ${pointIndex}`
+                ];
+
+                if (selectionData) {
+                    textLines.push(`Selected Interval: ${selectionData.startIndex} - ${selectionData.endIndex}`);
+                }
+
+                let textY = 10;
+                const textX = 10;
+                
+                for (const line of textLines) {
+                    ctx.strokeText(line, textX, textY);
+                    ctx.fillText(line, textX, textY);
+                    textY += 24;
+                }
+                ctx.restore();
             }
         } else if (currentGlobalFrame < startFrame) {
             // Força busca inicial se o vídeo estiver muito longe
@@ -307,6 +363,9 @@ function setupVideoLogic(video, canvas, ctx, trajectory, options, callbacks) {
         },
         togglePause: () => {
             if (video.paused) video.play(); else video.pause();
+        },
+        setSelection: (data) => {
+            selectionData = data;
         }
     };
 }

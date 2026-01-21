@@ -1,7 +1,7 @@
 import { VISUALIZATION_CONFIG, DIRECTION_STRINGS, CLUSTER_COLORS } from './config.js';
 import { eventManager } from './events.js';
 import {
-  getSpeed, getDirection, getLentoIndices, getTurnIndices, getCustomMotifIndices,
+  getSpeed, getDirection, getCustomMotifIndices, getAllCustomMotifIndices,
   parseTrajectoryData, calculateDuration, calculateStraightLineDistance
 } from './dataUtils.js';
 
@@ -29,11 +29,41 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
   let selectedTrajectoryId = null;
   let sequences = [];
 
+  // Interaction Mode State
+  let interactionMode = false;
+  let selectionState = {
+    step: 0, // 0: start, 1: end, 2: reset
+    trajectoryId: null,
+    startIndex: null,
+    endIndex: null
+  };
+
   // Initialize state from external config if available
-  let activeMotifs = config?.activeMotifs ? { ...config.activeMotifs } : { lento: false, turn: false, custom: [{}, {}, {}] };
+  // activeMotifs.custom is now an Array of Motif Objects: { id, name, color, pattern }
+  let activeMotifs = config?.activeMotifs ? { ...config.activeMotifs } : { custom: [] };
+  
+  // Ensure backward compatibility or initialization
   if (!Array.isArray(activeMotifs.custom)) {
-    activeMotifs.custom = [{}, {}, {}];
+     // If it was the old single object style, convert or reset? 
+     // For safety, let's reset or try to migrate if it has data.
+     if (typeof activeMotifs.custom === 'object' && activeMotifs.custom.some && activeMotifs.custom.some(p => p.speed || p.dir)) {
+         activeMotifs.custom = [{
+             id: Date.now(),
+             name: activeMotifs.customName || "Legacy Motif",
+             color: activeMotifs.customColor || "#16a085",
+             pattern: activeMotifs.custom
+         }];
+     } else {
+         activeMotifs.custom = [];
+     }
   }
+
+  // Builder State (for the "Create New" form)
+  let builderState = {
+      name: "New Motif",
+      color: "#e74c3c", // Default red-ish
+      pattern: [{}, {}, {}]
+  };
 
   // ==================================================
   // 1) Preparação
@@ -112,6 +142,8 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
       render();
     });
 
+  
+
 
     /*
   controlsDiv.append("span")
@@ -179,7 +211,7 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
     .style("margin-right", "5px")
     .text("Motif:");
   const dropdownBtn = dropdown.append("button").attr("class", "dropdown-toggle").text("Build");
-  const dropdownContent = dropdown.append("div").style("background", "white").attr("class", "dropdown-content");
+  const dropdownContent = dropdown.append("div").style("background", "white").style("transform", "translateX(-100px)").attr("class", "dropdown-content");
 
   function notifyMotifConfig() {
     eventManager.notify('MOTIF_CONFIG_CHANGED', {
@@ -197,18 +229,6 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
     input.on("change", function () { onChange(this.checked); });
   }
 
-  addDropdownItem("DDD (Very Slow)", "lento", activeMotifs.lento, (checked) => {
-    activeMotifs.lento = checked;
-    notifyMotifConfig();
-    render();
-  });
-
-  addDropdownItem("Abrupt Turn", "turn", activeMotifs.turn, (checked) => {
-    activeMotifs.turn = checked;
-    notifyMotifConfig();
-    render();
-  });
-
   // Custom Motif Builder
   dropdownContent.append("div")
     .style("border-top", "1px solid #eee")
@@ -225,11 +245,90 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
   const directions = ["N", "E", "S", "W"];
 
   function updateMotifUI() {
-    motifBuilder.selectAll(".motif-step").remove();
-    motifBuilder.selectAll(".motif-apply-container").remove();
+    motifBuilder.selectAll("*").remove();
+    
+    // --- PART 1: Active Motifs List ---
+    if (activeMotifs.custom.length > 0) {
+        motifBuilder.append("div")
+            .style("font-size", "11px")
+            .style("font-weight", "bold")
+            .style("margin-bottom", "5px")
+            .text("Active Custom Motifs:");
+            
+        activeMotifs.custom.forEach((m, idx) => {
+            const row = motifBuilder.append("div")
+                .style("display", "flex")
+                .style("align-items", "center")
+                .style("justify-content", "space-between")
+                .style("background", "#f9f9f9")
+                .style("border", "1px solid #eee")
+                .style("padding", "4px")
+                .style("margin-bottom", "4px")
+                .style("border-radius", "4px");
+            
+            const info = row.append("div").style("display", "flex").style("align-items", "center").style("gap", "6px");
+            
+            info.append("div")
+                .style("width", "12px").style("height", "12px")
+                .style("background", m.color)
+                .style("border-radius", "2px");
+                
+            info.append("span").style("font-size", "11px").text(m.name);
+            
+            row.append("span")
+                .attr("class", "motif-clear-btn")
+                .text("Delete")
+                .on("click", () => {
+                    activeMotifs.custom.splice(idx, 1);
+                    updateMotifUI();
+                    notifyMotifConfig();
+                    render();
+                });
+        });
+        
+        motifBuilder.append("hr").style("border", "0").style("border-top", "1px solid #eee").style("margin", "8px 0");
+    }
 
-    activeMotifs.custom.forEach((step, i) => {
-      const isPrevStepEmpty = i > 0 && !(activeMotifs.custom[i - 1].speed || activeMotifs.custom[i - 1].dir);
+    // --- PART 2: Builder ---
+    motifBuilder.append("div")
+        .style("font-size", "11px")
+        .style("font-weight", "bold")
+        .style("margin-bottom", "5px")
+        .text("Create New Motif:");
+
+    const settingsDiv = motifBuilder.append("div")
+      .attr("class", "motif-custom-settings")
+      .style("display", "flex")
+      .style("gap", "10px")
+      .style("margin-bottom", "10px")
+      .style("align-items", "center");
+
+    settingsDiv.append("span").text("Name:").style("font-size", "11px");
+    settingsDiv.append("input")
+      .attr("type", "text")
+      .attr("class", "dropdown-toggle")
+      .style("width", "90px")
+      .property("value", builderState.name)
+      .on("input", function() {
+        builderState.name = this.value;
+      });
+
+    settingsDiv.append("span").text("Color:").style("font-size", "11px");
+    settingsDiv.append("input")
+      .attr("type", "color")
+      .style("padding", "0")
+      .style("border", "none")
+      .style("width", "25px")
+      .style("height", "25px")
+      .style("cursor", "pointer")
+      .property("value", builderState.color)
+      .on("input", function() {
+        builderState.color = this.value;
+      });
+
+    // Steps Builder
+    builderState.pattern.forEach((step, i) => {
+      const isPrevStepEmpty = i > 0 && !(builderState.pattern[i - 1].speed || builderState.pattern[i - 1].dir);
 
       const stepDiv = motifBuilder.append("div")
         .attr("class", "motif-step")
@@ -244,7 +343,7 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
           .attr("class", "motif-clear-btn")
           .text("Clear")
           .on("click", () => {
-            activeMotifs.custom[i] = {};
+            builderState.pattern[i] = {};
             updateMotifUI();
           });
       }
@@ -279,35 +378,43 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
     });
 
     const applyContainer = motifBuilder.append("div").attr("class", "motif-apply-container");
-    const isAnyCustomActive = activeMotifs.custom.some(p => p.speed || p.dir);
+    const isBuilderValid = builderState.pattern.some(p => p.speed || p.dir);
 
     applyContainer.append("button")
       .attr("class", "dropdown-toggle")
-      .style("background", isAnyCustomActive ? "#164773" : "#ccc")
+      .style("background", isBuilderValid ? "#164773" : "#ccc")
       .style("color", "#fff")
       .style("border", "none")
-      .style("cursor", isAnyCustomActive ? "pointer" : "not-allowed")
-      .attr("disabled", isAnyCustomActive ? null : true)
-      .text("Apply Motif Filter")
-      .on("mouseover", function() {
-        if (isAnyCustomActive) d3.select(this).style("color", "white").style("background", "#205d92ff");
-      })
-      .on("mouseout", function() {
-        if (isAnyCustomActive) d3.select(this).style("color", "#fff").style("background", "#164773");
-      })
+      .style("cursor", isBuilderValid ? "pointer" : "not-allowed")
+      .attr("disabled", isBuilderValid ? null : true)
+      .text("Add Motif to List")
       .on("click", () => {
+        if (!isBuilderValid) return;
+        
+        // Add to active motifs
+        activeMotifs.custom.push({
+            id: Date.now(),
+            name: builderState.name || "Custom Motif",
+            color: builderState.color,
+            pattern: JSON.parse(JSON.stringify(builderState.pattern)) // Deep copy
+        });
+        
+        // Reset builder
+        builderState.name = "New Motif";
+        builderState.pattern = [{}, {}, {}];
+        // Keep color or randomize? Let's randomize slightly or keep same
+        
+        updateMotifUI();
         notifyMotifConfig();
         render();
       });
 
     applyContainer.append("span")
       .attr("class", "motif-clear-btn")
-      .text("Clear All")
+      .text("Reset Builder")
       .on("click", () => {
-        activeMotifs.custom = [{}, {}, {}];
+        builderState.pattern = [{}, {}, {}];
         updateMotifUI();
-        notifyMotifConfig();
-        render();
       });
   }
 
@@ -322,6 +429,29 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
 
   d3.select(window).on("click.dropdown", function () { dropdownContent.classed("show", false); });
   dropdownContent.on("click", function (event) { event.stopPropagation(); });
+
+  // Interaction Mode Button
+  controlsDiv.append("button")
+      .attr("class", "dropdown-toggle")
+      .style("margin-left", "10px")
+      .text("Frame Interval: OFF")
+      .on("click", function() {
+          interactionMode = !interactionMode;
+          d3.select(this).text(`Frame Interval: ${interactionMode ? "ON" : "OFF"}`);
+          d3.select(this)
+            .style("background", interactionMode ? "#16a085" : null)
+            .style("color", interactionMode ? "white" : null);
+          
+          // Reset state when toggling
+          selectionState = { step: 0, trajectoryId: null, startIndex: null, endIndex: null };
+          
+          // Clear visuals
+          centerSvg.selectAll(".frame-selected-start").classed("frame-selected-start", false);
+          centerSvg.selectAll(".frame-selected-interval").classed("frame-selected-interval", false);
+          eventManager.notify('FRAME_SELECT_TRAJECTORY', null); // Notify reset
+
+          console.log(`Interaction Mode: ${interactionMode ? "ON" : "OFF"}`);
+      });
 
   const legendLabel = controlsDiv.append("label")
     .attr("class", "rug-legend-toggle");
@@ -379,17 +509,15 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
 
     const datum = sequences.find(s => s.id === id);
     if (datum) {
+      const allMatches = getAllCustomMotifIndices(datum.seq, activeMotifs.custom);
       console.log(datum.seq, activeMotifs.custom);
-      console.log(getCustomMotifIndices(datum.seq, activeMotifs.custom));
+      console.log(allMatches);
+      
       eventManager.notify('TRAJECTORY_SELECTED', {
         trajectory: datum,
         options: {
-          highlightLentoIndices: getLentoIndices(datum.seq, activeMotifs.lento),
-          highlightTurnIndices: getTurnIndices(datum.seq, activeMotifs.turn),
-          highlightCustomIndices: getCustomMotifIndices(datum.seq, activeMotifs.custom)
+          customMotifs: allMatches
         }
-
-
       });
     }
   }
@@ -557,9 +685,8 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
 
     rows.each(function (rowData) {
       const rowG = d3.select(this);
-      const lentoIndices = getLentoIndices(rowData.seq, activeMotifs.lento);
-      const turnIndices = getTurnIndices(rowData.seq, activeMotifs.turn);
-      const customIndices = getCustomMotifIndices(rowData.seq, activeMotifs.custom);
+      const allMatches = getAllCustomMotifIndices(rowData.seq, activeMotifs.custom);
+      const getMatchesAt = (idx) => allMatches.filter(m => m.indices.has(idx));
 
       const cells = rowG.selectAll(".g-cell")
         .data(rowData.seq).enter().append("g").attr("class", "g-cell")
@@ -568,30 +695,95 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
       cells.append("rect")
         .attr("width", cellSize).attr("height", cellSize)
         .attr("fill", (d, i) => {
-          if (customIndices.has(i)) return "#a2d9ce"; // Cyan-ish for Custom
-          if (turnIndices.has(i)) return "#d2b4de";
-          if (lentoIndices.has(i)) return "#fae3b1ff";
+          const m = getMatchesAt(i);
+          if (m.length > 0) return m[m.length - 1].color;
           return VISUALIZATION_CONFIG.cellBackgroundColor || "#fff";
         })
+        .attr("fill-opacity", (d, i) => {
+          if (getMatchesAt(i).length > 0) return 0.4;
+          return 1;
+        })
         .attr("stroke", (d, i) => {
-          if (customIndices.has(i)) return "#16a085";
-          if (turnIndices.has(i)) return "#8e44ad";
-          if (lentoIndices.has(i)) return "#fbbe63ff";
+          const m = getMatchesAt(i);
+          if (m.length > 0) return m[m.length - 1].color;
           return VISUALIZATION_CONFIG.cellBorderColor || "#ddd";
         })
-        .attr("stroke-width", (d, i) => (turnIndices.has(i) || lentoIndices.has(i) || customIndices.has(i)) ? 1.5 : (VISUALIZATION_CONFIG.cellBorderWidth ?? 0.5))
+        .attr("stroke-width", (d, i) => getMatchesAt(i).length > 0 ? 1.5 : (VISUALIZATION_CONFIG.cellBorderWidth ?? 0.5))
         .each(function (d, i) {
           const el = d3.select(this);
-          const isTurn = turnIndices.has(i);
-          const isLento = lentoIndices.has(i);
-          const isCustom = customIndices.has(i);
-          if (isTurn || isLento || isCustom) {
-            el.on("mouseover", function (event) {
-              const parts = [];
-              if (isCustom) parts.push("Custom Motif");
-              if (isTurn) parts.push("Abrupt Turn");
-              if (isLento) parts.push("Very Slow");
 
+          // Interaction Mode Handler
+          el.on("click", function(event) {
+            if (!interactionMode) return; // Allow bubbling to row if not in interaction mode
+
+            event.stopPropagation();
+            
+            const startFrameOffset = parseInt(rowData.raw.frame_inicial) || 0;
+
+            if (selectionState.step === 0) {
+              // 1st Click: Start
+              selectionState.trajectoryId = rowData.id;
+              selectionState.startIndex = i;
+              selectionState.step = 1;
+              
+              // Visual feedback for start frame
+              d3.select(this).classed("frame-selected-start", true);
+
+              console.log(`[Interaction] Start selected at index ${i} (Frame ${startFrameOffset + i}) for Trajectory ${rowData.id}`);
+            } else if (selectionState.step === 1) {
+              // 2nd Click: End
+              if (selectionState.trajectoryId !== rowData.id) {
+                 console.warn("[Interaction] Selected a different trajectory. Resetting selection.");
+                 // Clear visuals
+                 centerSvg.selectAll(".frame-selected-start").classed("frame-selected-start", false);
+                 selectionState = { step: 0, trajectoryId: null, startIndex: null, endIndex: null };
+                 return;
+              }
+
+              selectionState.endIndex = i;
+              selectionState.step = 2;
+
+              const fStartIdx = Math.min(selectionState.startIndex, selectionState.endIndex);
+              const fEndIdx = Math.max(selectionState.startIndex, selectionState.endIndex);
+
+              const fStart = startFrameOffset + fStartIdx;
+              const fEnd = startFrameOffset + fEndIdx;
+              
+              // Visual feedback for interval
+              d3.select(this.parentNode.parentNode).selectAll(".g-cell rect")
+                .filter((d, idx) => idx >= fStartIdx && idx <= fEndIdx)
+                .classed("frame-selected-interval", true);
+
+              console.log(`[Interaction] End selected at index ${i} (Frame ${startFrameOffset + i})`);
+              console.log(`Trajectory Frame Interval: ${fStart} - ${fEnd}`);
+
+              eventManager.notify('FRAME_SELECT_TRAJECTORY', {
+                  trajectoryId: rowData.id,
+                  userId: rowData.raw.user_id,
+                  startFrame: fStart,
+                  endFrame: fEnd,
+                  startIndex: fStartIdx,
+                  endIndex: fEndIdx
+              });
+
+            } else {
+              // 3rd Click: Reset
+              selectionState = { step: 0, trajectoryId: null, startIndex: null, endIndex: null };
+              
+              // Clear visuals
+              centerSvg.selectAll(".frame-selected-start").classed("frame-selected-start", false);
+              centerSvg.selectAll(".frame-selected-interval").classed("frame-selected-interval", false);
+
+              eventManager.notify('FRAME_SELECT_TRAJECTORY', null);
+
+              console.log("[Interaction] Selection reset.");
+            }
+          });
+
+          const matches = getMatchesAt(i);
+          if (matches.length > 0) {
+            el.on("mouseover", function (event) {
+              const parts = matches.map(m => m.name);
               const tooltip = d3.select("body").selectAll(".tooltip").data([0]).join("div").attr("class", "tooltip");
               tooltip.text(parts.join(" & "))
                 .style("opacity", 1).style("left", (event.pageX + 10) + "px").style("top", (event.pageY - 10) + "px");

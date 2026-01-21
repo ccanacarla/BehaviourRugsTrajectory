@@ -250,20 +250,26 @@ position: absolute;
 }
 
 .dropdown-toggle {
-    background: "transparent";
+    background: transparent;
     border: 1px solid #ccc;
     border-radius: 4px;    
     font-size: 12px;
     cursor: pointer;
 }
 
+.motif-custom-settings input[type="text"] {
+    padding: 2px 5px;
+}
+
 .dropdown-content {
     display: none;
     position: absolute;
-    background:"transparent";
+    background: #fff;
     border: 1px solid #ddd;
     border-radius: 4px;
-    overflow: auto; 
+    max-height: 450px;
+    overflow-y: auto; 
+    overflow-x: hidden;
     min-width: 160px;
     box-shadow: 0 8px 16px rgba(0,0,0,0.2);
     z-index: 1000;
@@ -508,3 +514,18 @@ position: absolute;
     transition: width 0.1s linear;
 }
 
+/* =========================================================
+   FRAME SELECTION
+========================================================= */
+rect.frame-selected-start {
+    stroke: #9408d0 !important;
+    stroke-width: 3px !important;
+    fill: #d2b4de !important;
+}
+
+rect.frame-selected-interval {
+    stroke: #8e44ad !important;
+    stroke-width: 2px !important;
+    stroke-opacity: 0.8;
+    fill: #d2b4de !important;
+}

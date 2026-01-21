@@ -50,6 +50,39 @@ eventManager.subscribe('TRAJECTORY_SELECTED', ({ trajectory, options }) => {
     if (videoPanel) videoPanel.update(trajectory, { highlightColor });
 });
 
+eventManager.subscribe('FRAME_SELECT_TRAJECTORY', (data) => {
+    if (videoPanel) {
+        if (data && (!selectedTrajectory || (selectedTrajectory.id !== data.trajectoryId))) {
+            const traj = currentFilteredData.find(d => d.trajectory_id === data.trajectoryId);
+            if (traj) {
+                const clusterVal = traj.cluster ?? traj.raw?.cluster;
+                const highlightColor = clusterVal !== undefined
+                    ? CLUSTER_COLORS[Math.abs(+clusterVal % CLUSTER_COLORS.length)]
+                    : "#ffeb3b";
+                videoPanel.update(traj, { highlightColor });
+                
+                // Update selection if needed (e.g. if we want to force the selection immediately)
+                selectedTrajectory = traj;
+            }
+        }
+        videoPanel.setSelection(data);
+    }
+
+    // Update Trajectory View Highlight
+    if (data && selectedTrajectory && selectedTrajectory.id === data.trajectoryId) {
+        drawTrajectoryView([selectedTrajectory], '#trajectory-panel', {
+            highlightId: selectedTrajectory.id,
+            highlightSegmentInterval: { startIndex: data.startIndex, endIndex: data.endIndex }
+        });
+    } else if (!data && selectedTrajectory) {
+        // Clear highlight if data is null (reset)
+        drawTrajectoryView([selectedTrajectory], '#trajectory-panel', {
+            highlightId: selectedTrajectory.id,
+            highlightSegmentInterval: null
+        });
+    }
+});
+
 eventManager.subscribe('CLUSTERS_CHANGED', ({ clusterIds }) => {
     filterState.clusterIds = clusterIds;
     applyFilters();
@@ -122,9 +155,13 @@ function applyFilters() {
 
     if (filterState.motifConfig) {
         const { activeMotifs, column } = filterState.motifConfig;
+        
         const isCustomActive = activeMotifs.custom && (
             (typeof activeMotifs.custom === 'string' && activeMotifs.custom.trim() !== "") ||
-            (Array.isArray(activeMotifs.custom) && activeMotifs.custom.some(p => p.speed || p.dir))
+            // Old style: Array of steps (check if any step has content)
+            (Array.isArray(activeMotifs.custom) && activeMotifs.custom.length > 0 && (activeMotifs.custom[0].speed !== undefined || activeMotifs.custom[0].dir !== undefined || Object.keys(activeMotifs.custom[0]).length === 0) && activeMotifs.custom.some(p => p.speed || p.dir)) ||
+            // New style: Array of Motif Objects (check if list is not empty and has valid patterns)
+            (Array.isArray(activeMotifs.custom) && activeMotifs.custom.some(m => m.pattern && m.pattern.some(p => p.speed || p.dir)))
         );
 
         if (activeMotifs.lento || activeMotifs.turn || isCustomActive) {
