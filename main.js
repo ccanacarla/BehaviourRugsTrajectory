@@ -53,7 +53,8 @@ eventManager.subscribe('TRAJECTORY_SELECTED', ({ trajectory, options }) => {
 eventManager.subscribe('FRAME_SELECT_TRAJECTORY', (data) => {
     if (videoPanel) {
         if (data && (!selectedTrajectory || (selectedTrajectory.id !== data.trajectoryId))) {
-            const traj = currentFilteredData.find(d => d.trajectory_id === data.trajectoryId);
+            const traj = currentFilteredData.find(d => d.trajectory_id === data.trajectoryId) || 
+                         fullData.find(d => d.trajectory_id === data.trajectoryId);
             if (traj) {
                 const clusterVal = traj.cluster ?? traj.raw?.cluster;
                 const highlightColor = clusterVal !== undefined

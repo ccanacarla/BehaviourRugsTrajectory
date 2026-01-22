@@ -110,6 +110,7 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
     return {
       id: d.trajectory_id,
       trajectory_id: d.trajectory_id,
+      user_id: d.user_id,
       cluster: d.cluster,
       seq,
       simbolic_movement: rawJson,
@@ -731,6 +732,15 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
               // Visual feedback for start frame
               d3.select(this).classed("frame-selected-start", true);
 
+              eventManager.notify('FRAME_SELECT_TRAJECTORY', {
+                  trajectoryId: rowData.id,
+                  user_id: rowData.user_id,
+                  startFrame: startFrameOffset + i,
+                  endFrame: null,
+                  startIndex: i,
+                  endIndex: null
+              });
+
               console.log(`[Interaction] Start selected at index ${i} (Frame ${startFrameOffset + i}) for Trajectory ${rowData.id}`);
             } else if (selectionState.step === 1) {
               // 2nd Click: End
@@ -761,7 +771,7 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
 
               eventManager.notify('FRAME_SELECT_TRAJECTORY', {
                   trajectoryId: rowData.id,
-                  userId: rowData.raw.user_id,
+                  user_id: rowData.user_id,
                   startFrame: fStart,
                   endFrame: fEnd,
                   startIndex: fStartIdx,

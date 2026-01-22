@@ -60,6 +60,15 @@ export function initVideoPanel(containerSelector) {
     const progressBar = progressTrack.append("div")
         .attr("class", "video-progress-fill");
 
+    // Click to Seek
+    progressTrack.on("click", function(event) {
+        if (!activeController) return;
+        const rect = this.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const percentage = Math.max(0, Math.min(1, x / rect.width));
+        activeController.seek(percentage);
+    });
+
     // --- Contexto e Variáveis de Estado ---
     const ctx = canvas.node().getContext("2d");
     let activeController = null;
@@ -261,7 +270,7 @@ function setupVideoLogic(video, canvas, ctx, trajectory, options, callbacks) {
                                  );
                              }
                              ctx.strokeStyle = clusterColor; // Opaque color
-                             ctx.lineWidth = 4; // Thicker line
+                             ctx.lineWidth = 5; // Thicker line
                              ctx.stroke();
                         }
                     }
@@ -366,6 +375,16 @@ function setupVideoLogic(video, canvas, ctx, trajectory, options, callbacks) {
         },
         setSelection: (data) => {
             selectionData = data;
+        },
+        seek: (percentage) => {
+            if (!video.duration) return;
+            // Clamp percentage 0..1
+            const p = Math.max(0, Math.min(1, percentage));
+            const targetGlobalFrame = startFrame + (p * segmentLen);
+            
+            // Convert frame to time
+            const targetTime = (targetGlobalFrame / TOTAL_VIDEO_FRAMES) * video.duration;
+            video.currentTime = targetTime;
         }
     };
 }

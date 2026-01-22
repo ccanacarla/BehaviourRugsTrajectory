@@ -480,7 +480,7 @@ export function drawTrajectoryView(data, containerSelector, opts = {}) {
                         .datum(points.slice(start, end + 1))
                         .attr("d", line)
                         .attr("fill", "none")
-                        .attr("stroke", highlightColor) // Use the cluster color
+                        .attr("stroke", "#8e44ad") // Purple matching .frame-selected-interval
                         .attr("stroke-width", 4)
                         .attr("opacity", 1);
                 }
