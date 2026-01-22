@@ -101,9 +101,9 @@ export function drawTrajectoryView(data, containerSelector, opts = {}) {
   // ==================================================
   // 2) Área do Plot
   // ==================================================
-  const width = 420;
-  const height = 220;
-  const margin = { top: 0, right: 20, bottom: 10, left: 45 };
+  const width = 280;
+  const height = 170;
+  const margin = { top: 0, right: 20, bottom: 20, left: 45 };
 
   const svg = wrapper.append("svg")
     .attr("width", "100%")

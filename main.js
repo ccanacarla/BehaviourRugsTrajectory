@@ -9,6 +9,7 @@ import { parseSequence, hasLentoMotif, hasTurnMotif, hasCustomMotif } from './da
 import { CLUSTER_COLORS } from './config.js';
 import { initVideoPanel } from './videoPanel.js';
 import { generatePDFReport } from './reportGenerator.js';
+import { drawConfusionMatrix } from './confusionMatrix.js';
 
 let fullData;
 let currentFilteredData = [];
@@ -18,6 +19,7 @@ let videoPanel;
 const filterState = {
     clusterIds: null,
     tsneIds: null,
+    matrixIds: null,
     motifConfig: null,
     userId: null
 };
@@ -94,6 +96,11 @@ eventManager.subscribe('TSNE_FILTER_CHANGED', ({ trajectoryIds }) => {
     applyFilters();
 });
 
+eventManager.subscribe('CONFUSION_MATRIX_FILTER_CHANGED', ({ trajectoryIds }) => {
+    filterState.matrixIds = trajectoryIds;
+    applyFilters();
+});
+
 eventManager.subscribe('MOTIF_CONFIG_CHANGED', config => {
     filterState.motifConfig = config;
     applyFilters();
@@ -107,6 +114,7 @@ eventManager.subscribe('USER_FILTER_CHANGED', ({ userId }) => {
 eventManager.subscribe('RESET_FILTERS', () => {
     filterState.clusterIds = null;
     filterState.tsneIds = null;
+    filterState.matrixIds = null;
     filterState.motifConfig = null;
     filterState.userId = null;
     selectedTrajectory = null;
@@ -152,6 +160,13 @@ function applyFilters() {
         filteredForClusters = filteredForClusters.filter(d => ids.has(d.trajectory_id));
         filteredForRug = filteredForRug.filter(d => ids.has(d.trajectory_id));
         activeFilters.push('t-SNE');
+    }
+
+    if (filterState.matrixIds?.length) {
+        const ids = new Set(filterState.matrixIds);
+        filteredForClusters = filteredForClusters.filter(d => ids.has(d.trajectory_id));
+        filteredForRug = filteredForRug.filter(d => ids.has(d.trajectory_id));
+        activeFilters.push('Matrix');
     }
 
     if (filterState.motifConfig) {
@@ -201,6 +216,7 @@ function applyFilters() {
 
     drawTrajectoryViewAll(currentFilteredData, '#trajectory-all-panel');
     drawclusterMatrices(filteredForClusters, '#cluster-panel', filterState.clusterIds, fullData);
+    drawConfusionMatrix(currentFilteredData, '#confusion-matrix-panel', fullData);
 
     updateTSNEHighlight(
         activeFilters.length ? currentFilteredData.map(d => d.trajectory_id) : null, 

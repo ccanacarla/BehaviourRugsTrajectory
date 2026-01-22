@@ -224,7 +224,7 @@ position: absolute;
 
 
 #tsne-panel {
-    min-height: 280px;
+    min-height: 200px;
 }
 
 #trajectory-panel {
@@ -528,4 +528,8 @@ rect.frame-selected-interval {
     stroke-width: 2px !important;
     stroke-opacity: 0.8;
     fill: #d2b4de !important;
+}
+#confusion-matrix-panel {
+    min-height: 220px;
+    flex: 0 0 220px; /* Prevent it from shrinking too much or growing unnecessarily */
 }
