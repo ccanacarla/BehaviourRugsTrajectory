@@ -10,7 +10,7 @@ eventManager.subscribe('RESET_FILTERS', () => {
     // Since main.js calls drawConfusionMatrix on reset, the visual update happens there.
 });
 
-export function drawConfusionMatrix(data, containerSelector, fullData = null) {
+export function drawConfusionMatrix(data, containerSelector, fullData = null, activeClusterIds = null) {
     const container = d3.select(containerSelector);
     container.selectAll("*").remove();
 
@@ -24,7 +24,7 @@ export function drawConfusionMatrix(data, containerSelector, fullData = null) {
     // 1. Prepare Data & Domains
     // Use fullData for domains if available to keep matrix stable
     const domainData = fullData || data;
-    
+
     const xLabels = Array.from(new Set(domainData.map(d => d.phys_cluster))).sort((a, b) => a - b);
     const yLabels = Array.from(new Set(domainData.map(d => d.cluster))).sort((a, b) => a - b);
 
@@ -63,10 +63,10 @@ export function drawConfusionMatrix(data, containerSelector, fullData = null) {
     const maxCount = d3.max(flatData, d => d.count) || 1; // avoid divide by zero
 
     // 2. Setup Dimensions
-    const margin = { top: 10, right: 30, bottom: 45, left: 60 };
+    const margin = { top: 10, right: 25, bottom: 45, left: 30 };
     const containerRect = container.node().getBoundingClientRect();
     const width = containerRect.width || 200;
-    const height = 220; 
+    const height = 220;
     const innerWidth = width - margin.left - margin.right;
     const innerHeight = height - margin.top - margin.bottom;
 
@@ -83,20 +83,18 @@ export function drawConfusionMatrix(data, containerSelector, fullData = null) {
         .padding(0.05);
 
     const y = d3.scaleBand()
-        .range([innerHeight, 0])
+        .range([0, innerHeight])
         .domain(yLabels)
         .padding(0.05);
-
     const color = d3.scaleSequential()
         .interpolator(d3.interpolateBlues)
         .domain([0, maxCount]);
-
     // 4. Draw
     // X Axis
     svg.append("g")
         .attr("transform", `translate(0,${innerHeight})`)
         .call(d3.axisBottom(x));
-    
+
     svg.append("text")
         .attr("class", "axis-label")
         .attr("x", innerWidth / 2)
@@ -134,24 +132,27 @@ export function drawConfusionMatrix(data, containerSelector, fullData = null) {
         .style("cursor", d => d.count === 0 ? "default" : "pointer")
         .style("stroke", d => {
             const isSelected = selection.some(s => s.yVal === d.yVal && s.xVal === d.xVal);
-            if (isSelected) {
-                return "#e74c3c"; // Selected highlight color
+            if (isSelected || activeClusterIds && activeClusterIds.includes(String(d.yVal))) {
+                return CLUSTER_COLORS[Math.abs(+d.yVal % CLUSTER_COLORS.length)];
             }
             return "#ddd";
         })
         .style("stroke-width", d => {
             const isSelected = selection.some(s => s.yVal === d.yVal && s.xVal === d.xVal);
             if (isSelected) {
-                return 3; 
+                return 3;
+            }
+            if (activeClusterIds && activeClusterIds.includes(String(d.yVal))) {
+                return 3;
             }
             return 1;
         })
         .on("click", (event, d) => {
             if (d.count === 0) return;
-            
+
             // Toggle selection
             const existingIndex = selection.findIndex(s => s.yVal === d.yVal && s.xVal === d.xVal);
-            
+
             if (existingIndex !== -1) {
                 // Remove from selection
                 selection.splice(existingIndex, 1);
@@ -159,7 +160,7 @@ export function drawConfusionMatrix(data, containerSelector, fullData = null) {
                 // Add to selection
                 selection.push({ yVal: d.yVal, xVal: d.xVal });
             }
-            
+
             // Calculate aggregated IDs
             let allIds = null;
             if (selection.length > 0) {
@@ -184,7 +185,7 @@ export function drawConfusionMatrix(data, containerSelector, fullData = null) {
                 // Deduplicate
                 allIds = [...new Set(allIds)];
             }
-            
+
             eventManager.notify('CONFUSION_MATRIX_FILTER_CHANGED', { trajectoryIds: allIds });
         });
 

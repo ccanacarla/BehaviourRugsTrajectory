@@ -224,7 +224,7 @@ function applyFilters() {
     drawclusterMatrices(filteredForClusters, '#cluster-panel', filterState.clusterIds, fullData);
     
     // Use the snapshot to keep the matrix populated regardless of its own selection
-    drawConfusionMatrix(dataForMatrix, '#confusion-matrix-panel', fullData);
+    drawConfusionMatrix(dataForMatrix, '#confusion-matrix-panel', fullData, filterState.clusterIds);
 
     updateTSNEHighlight(
         activeFilters.length ? currentFilteredData.map(d => d.trajectory_id) : null, 

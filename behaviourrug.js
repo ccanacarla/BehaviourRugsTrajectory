@@ -475,7 +475,7 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
           interactionMode = !interactionMode;
           d3.select(this).text(`Frame Interval: ${interactionMode ? "ON" : "OFF"}`);
           d3.select(this)
-            .style("background", interactionMode ? "#16a085" : null)
+            .style("background", interactionMode ? "#8e44ad" : null)
             .style("color", interactionMode ? "white" : null);
           
           // Reset state when toggling
