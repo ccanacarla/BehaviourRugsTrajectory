@@ -682,6 +682,8 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
 
     rows.append("rect")
       .attr("class", "row-bg")
+      .attr("rx", 4)   // opcional: canto arredondado
+      .attr("ry", 4)
       .attr("width", rugWidth)
       .attr("height", rowHeight)
       .attr("fill", "transparent");
@@ -697,6 +699,8 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
 
       cells.append("rect")
         .attr("width", cellSize).attr("height", cellSize)
+        .attr("rx", 2)   // opcional: canto arredondado
+        .attr("ry", 2)
         .attr("fill", (d, i) => {
           const m = getMatchesAt(i);
           if (m.length > 0) return m[m.length - 1].color;

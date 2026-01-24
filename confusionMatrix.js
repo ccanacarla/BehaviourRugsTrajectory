@@ -1,10 +1,10 @@
 import { CLUSTER_COLORS } from './config.js';
 import { eventManager } from './events.js';
 
-let selection = null;
+let selection = [];
 
 eventManager.subscribe('RESET_FILTERS', () => {
-    selection = null;
+    selection = [];
     // We don't necessarily need to redraw here as main.js will trigger a redraw with reset data
     // but if we wanted to clear highlighting immediately without data change, we could.
     // Since main.js calls drawConfusionMatrix on reset, the visual update happens there.
@@ -128,37 +128,64 @@ export function drawConfusionMatrix(data, containerSelector, fullData = null) {
         .attr("y", d => y(d.yVal))
         .attr("width", x.bandwidth())
         .attr("height", y.bandwidth())
+        .attr("rx", 4)
+        .attr("ry", 4)
         .style("fill", d => d.count === 0 ? "#f9f9f9" : color(d.count))
-        .style("cursor", "pointer")
+        .style("cursor", d => d.count === 0 ? "default" : "pointer")
         .style("stroke", d => {
-            if (selection && selection.yVal === d.yVal && selection.xVal === d.xVal) {
+            const isSelected = selection.some(s => s.yVal === d.yVal && s.xVal === d.xVal);
+            if (isSelected) {
                 return "#e74c3c"; // Selected highlight color
             }
             return "#ddd";
         })
         .style("stroke-width", d => {
-            if (selection && selection.yVal === d.yVal && selection.xVal === d.xVal) {
+            const isSelected = selection.some(s => s.yVal === d.yVal && s.xVal === d.xVal);
+            if (isSelected) {
                 return 3; 
             }
             return 1;
         })
         .on("click", (event, d) => {
+            if (d.count === 0) return;
+            
             // Toggle selection
-            if (selection && selection.yVal === d.yVal && selection.xVal === d.xVal) {
-                selection = null;
-                eventManager.notify('CONFUSION_MATRIX_FILTER_CHANGED', { trajectoryIds: null });
+            const existingIndex = selection.findIndex(s => s.yVal === d.yVal && s.xVal === d.xVal);
+            
+            if (existingIndex !== -1) {
+                // Remove from selection
+                selection.splice(existingIndex, 1);
             } else {
-                selection = { yVal: d.yVal, xVal: d.xVal };
-                
-                let targetIds = d.ids;
-                if (fullData) {
-                    targetIds = fullData
-                        .filter(item => item.cluster === d.yVal && item.phys_cluster === d.xVal)
-                        .map(item => item.trajectory_id);
-                }
-                
-                eventManager.notify('CONFUSION_MATRIX_FILTER_CHANGED', { trajectoryIds: targetIds });
+                // Add to selection
+                selection.push({ yVal: d.yVal, xVal: d.xVal });
             }
+            
+            // Calculate aggregated IDs
+            let allIds = null;
+            if (selection.length > 0) {
+                allIds = [];
+                selection.forEach(sel => {
+                    let cellIds = [];
+                    // Look up IDs for this cell
+                    // If fullData is available, query it to ensure stable filtering context
+                    if (fullData) {
+                        cellIds = fullData
+                            .filter(item => item.cluster === sel.yVal && item.phys_cluster === sel.xVal)
+                            .map(item => item.trajectory_id);
+                    } else {
+                        // Fallback to current filtered data (less robust for toggling)
+                        // In drawConfusionMatrix, 'd.ids' holds current data IDs. 
+                        // But we might need IDs that were filtered OUT if we are adding to selection?
+                        // If fullData is always passed (as per previous step), we are safe.
+                        // Assuming fullData is passed.
+                    }
+                    allIds = allIds.concat(cellIds);
+                });
+                // Deduplicate
+                allIds = [...new Set(allIds)];
+            }
+            
+            eventManager.notify('CONFUSION_MATRIX_FILTER_CHANGED', { trajectoryIds: allIds });
         });
 
     // Text counts

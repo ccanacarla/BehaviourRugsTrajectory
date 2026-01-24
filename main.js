@@ -149,12 +149,14 @@ function applyFilters() {
     let filteredForRug = fullData;
     let activeFilters = [];
 
+    // 1. User Filter
     if (filterState.userId) {
         filteredForClusters = filteredForClusters.filter(d => d.user_id === filterState.userId);
         filteredForRug = filteredForRug.filter(d => d.user_id === filterState.userId);
         activeFilters.push('User');
     }
 
+    // 2. t-SNE Filter
     if (filterState.tsneIds?.length) {
         const ids = new Set(filterState.tsneIds);
         filteredForClusters = filteredForClusters.filter(d => ids.has(d.trajectory_id));
@@ -162,21 +164,13 @@ function applyFilters() {
         activeFilters.push('t-SNE');
     }
 
-    if (filterState.matrixIds?.length) {
-        const ids = new Set(filterState.matrixIds);
-        filteredForClusters = filteredForClusters.filter(d => ids.has(d.trajectory_id));
-        filteredForRug = filteredForRug.filter(d => ids.has(d.trajectory_id));
-        activeFilters.push('Matrix');
-    }
-
+    // 3. Motif Filter
     if (filterState.motifConfig) {
         const { activeMotifs, column } = filterState.motifConfig;
         
         const isCustomActive = activeMotifs.custom && (
             (typeof activeMotifs.custom === 'string' && activeMotifs.custom.trim() !== "") ||
-            // Old style: Array of steps (check if any step has content)
             (Array.isArray(activeMotifs.custom) && activeMotifs.custom.length > 0 && (activeMotifs.custom[0].speed !== undefined || activeMotifs.custom[0].dir !== undefined || Object.keys(activeMotifs.custom[0]).length === 0) && activeMotifs.custom.some(p => p.speed || p.dir)) ||
-            // New style: Array of Motif Objects (check if list is not empty and has valid patterns)
             (Array.isArray(activeMotifs.custom) && activeMotifs.custom.some(m => m.pattern && m.pattern.some(p => p.speed || p.dir)))
         );
 
@@ -188,22 +182,34 @@ function applyFilters() {
                 if (isCustomActive && !hasCustomMotif(seq, activeMotifs.custom)) return false;
                 return true;
             };
-            const beforeLength = filteredForRug.length;
-            filteredForClusters = filteredForClusters.filter(f);
-            filteredForRug = filteredForRug.filter(f);
             
-            // If motif filter resulted in no trajectories, show error and reset
-            if (filteredForRug.length === 0) {
+            const tempFiltered = filteredForRug.filter(f);
+            
+            if (tempFiltered.length === 0) {
                 alert("No trajectories were found with this motif. The filter has been removed.");
                 filterState.motifConfig = null;
-                applyFilters(); // Recursively apply filters without motif
+                applyFilters(); 
                 return;
             }
-            
+
+            filteredForClusters = filteredForClusters.filter(f);
+            filteredForRug = tempFiltered;
             activeFilters.push('Motifs');
         }
     }
 
+    // SNAPSHOT for Confusion Matrix (Before Matrix and Cluster Filters)
+    const dataForMatrix = filteredForRug;
+
+    // 4. Matrix Filter (Confusion Matrix Selection)
+    if (filterState.matrixIds?.length) {
+        const ids = new Set(filterState.matrixIds);
+        filteredForClusters = filteredForClusters.filter(d => ids.has(d.trajectory_id));
+        filteredForRug = filteredForRug.filter(d => ids.has(d.trajectory_id));
+        activeFilters.push('Matrix');
+    }
+
+    // 5. Cluster Filter (Manual Selection)
     if (filterState.clusterIds?.length) {
         const ids = new Set(filterState.clusterIds.map(String));
         filteredForRug = filteredForRug.filter(d =>
@@ -216,7 +222,9 @@ function applyFilters() {
 
     drawTrajectoryViewAll(currentFilteredData, '#trajectory-all-panel');
     drawclusterMatrices(filteredForClusters, '#cluster-panel', filterState.clusterIds, fullData);
-    drawConfusionMatrix(currentFilteredData, '#confusion-matrix-panel', fullData);
+    
+    // Use the snapshot to keep the matrix populated regardless of its own selection
+    drawConfusionMatrix(dataForMatrix, '#confusion-matrix-panel', fullData);
 
     updateTSNEHighlight(
         activeFilters.length ? currentFilteredData.map(d => d.trajectory_id) : null, 
