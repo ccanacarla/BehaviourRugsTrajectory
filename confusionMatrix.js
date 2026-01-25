@@ -63,7 +63,7 @@ export function drawConfusionMatrix(data, containerSelector, fullData = null, ac
     const maxCount = d3.max(flatData, d => d.count) || 1; // avoid divide by zero
 
     // 2. Setup Dimensions
-    const margin = { top: 10, right: 25, bottom: 45, left: 30 };
+    const margin = { top: 10, right: 25, bottom: 45, left: 50 };
     const containerRect = container.node().getBoundingClientRect();
     const width = containerRect.width || 200;
     const height = 220;
