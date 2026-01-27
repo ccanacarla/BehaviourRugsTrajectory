@@ -680,14 +680,6 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
       })
       .on("click", (e, d) => highlightRow(selectedTrajectoryId === d.id ? null : d.id));
 
-    rows.append("rect")
-      .attr("class", "row-bg")
-      .attr("rx", 4)   // opcional: canto arredondado
-      .attr("ry", 4)
-      .attr("width", rugWidth)
-      .attr("height", rowHeight)
-      .attr("fill", "transparent");
-
     rows.each(function (rowData) {
       const rowG = d3.select(this);
       const allMatches = getAllCustomMotifIndices(rowData.seq, activeMotifs.custom);

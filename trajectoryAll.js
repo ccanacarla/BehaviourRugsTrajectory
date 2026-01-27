@@ -103,7 +103,7 @@ export function drawTrajectoryView(data, containerSelector, opts = {}) {
   // ==================================================
   const width = 280;
   const height = 170;
-  const margin = { top: 0, right: 20, bottom: 20, left: 45 };
+  const margin = { top: 0, right: 20, bottom: 30, left: 45 };
 
   const svg = wrapper.append("svg")
     .attr("width", "100%")
