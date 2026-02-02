@@ -147,10 +147,11 @@ export function frequencyGlyph(data, targetSelector = ".container") {
       let spVal = -1, dirVal = -1;
 
       if (s.includes("Muito_Lento")) spVal = 0;
+      else if (s.includes("Muito_Rapido")) spVal = 4;
       else if (s.includes("Lento")) spVal = 1;
       else if (s.includes("Medio")) spVal = 2;
       else if (s.includes("Rapido")) spVal = 3;
-      else if (s.includes("Muito_Rapido")) spVal = 4;
+
 
       if (s.includes("Norte")) dirVal = 0;
       else if (s.includes("Leste")) dirVal = 1;
