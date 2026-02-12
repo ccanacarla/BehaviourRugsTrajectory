@@ -118,11 +118,14 @@ export function drawclusterMatrices(data, containerSelector, activeClusterIds = 
         dwell: getThresholds(globalMetrics.dwell)
     };
 
+    // Helper to safely get cluster ID
+    const getCId = (d) => d.cluster_markov ?? d.clusterIds ?? d.cluster;
+
     // Total counts for global percentage
     const totalCounts = {};
     let globalTotal = 0;
     if (fullData) {
-        const fullMap = d3.group(fullData, d => d.cluster);
+        const fullMap = d3.group(fullData, getCId);
         for (const [cid, rows] of fullMap) {
             let valid = 0;
             rows.forEach(r => {
@@ -138,12 +141,16 @@ export function drawclusterMatrices(data, containerSelector, activeClusterIds = 
         globalTotal = data.length;
     }
 
-    const clustersMap = d3.group(data, d => d.cluster);
+    const clustersMap = d3.group(data, getCId);
     const clusterResults = [];
 
-    for (const [clusterId, trajectories] of clustersMap) {
-        if (!clusterId) continue;
+    // Determine all possible cluster IDs to ensure they all appear in the panel
+    const allClusterIds = fullData 
+        ? Array.from(new Set(fullData.map(getCId))).filter(d => d !== null && d !== undefined && d !== "")
+        : Array.from(clustersMap.keys()).filter(d => d !== null && d !== undefined && d !== "");
 
+    allClusterIds.forEach(clusterId => {
+        const trajectories = clustersMap.get(clusterId) || [];
         const sumMatrix = Array(nStates).fill(0).map(() => Array(nStates).fill(0));
         let validTrajCount = 0;
         
@@ -236,7 +243,7 @@ export function drawclusterMatrices(data, containerSelector, activeClusterIds = 
                 dwell: avgDwell
             }
         });
-    }
+    });
 
     clusterResults.sort((a, b) => parseInt(a.id) - parseInt(b.id));
 
@@ -252,7 +259,7 @@ export function drawclusterMatrices(data, containerSelector, activeClusterIds = 
     const heatmapColorScale = d3.scaleSequential(t => d3.interpolateRgb("#ffffff", baseColor)(t))
         .domain([0, 1]);
 
-    const selectedSet = new Set(activeClusterIds || []);
+    const selectedSet = new Set((activeClusterIds || []).map(String));
 
     if (clusterResults.length === 0) {
         container.append("div")
@@ -312,7 +319,8 @@ export function drawclusterMatrices(data, containerSelector, activeClusterIds = 
     clusterResults.forEach(clusterData => {
         const cId = clusterData.id;
         const cColor = CLUSTER_COLORS[Math.abs(+cId % CLUSTER_COLORS.length)];
-        const isSelected = selectedSet.has(cId);
+        const isSelected = selectedSet.has(String(cId));
+        const isDisabled = clusterData.count === 0;
         
         // Calculate percentages
         // 'n' is clusterData.count
@@ -329,15 +337,18 @@ export function drawclusterMatrices(data, containerSelector, activeClusterIds = 
             .style("border", isSelected ? `1px solid ${cColor}` : "1px solid #ddd")
             .style("border-radius", "4px")
             .style("box-shadow", "0 1px 2px rgba(0,0,0,0.05)")
-            .style("cursor", "pointer")
+            .style("cursor", isDisabled ? "default" : "pointer")
+            .style("pointer-events", isDisabled ? "none" : "auto")
+            .style("opacity", isDisabled ? 0.4 : 1)
+            .style("filter", isDisabled ? "grayscale(80%)" : "none")
             .style("padding", "0") // Padding moved to internal containers
             .on("click", function () {
                 const newSet = new Set(selectedSet);
-                if (newSet.has(cId)) {
-                    newSet.delete(cId);
+                if (newSet.has(String(cId))) {
+                    newSet.delete(String(cId));
                 }
                 else {
-                    newSet.add(cId);
+                    newSet.add(String(cId));
                 }
 
                 eventManager.notify('CLUSTERS_CHANGED', {
@@ -419,10 +430,10 @@ export function drawclusterMatrices(data, containerSelector, activeClusterIds = 
             .style("flex", "1");
 
         // Calculate max values for normalization
-        const maxSpeed = Math.max(...clusterResults.map(c => c.metrics.speed));
-        const maxDistance = Math.max(...clusterResults.map(c => c.metrics.distance));
-        const maxEntropy = Math.max(...clusterResults.map(c => c.metrics.entropy));
-        const maxDwell = Math.max(...clusterResults.map(c => c.metrics.dwell));
+        const maxSpeed = Math.max(0.01, ...clusterResults.map(c => c.metrics.speed));
+        const maxDistance = Math.max(0.01, ...clusterResults.map(c => c.metrics.distance));
+        const maxEntropy = Math.max(0.01, ...clusterResults.map(c => c.metrics.entropy));
+        const maxDwell = Math.max(0.01, ...clusterResults.map(c => c.metrics.dwell));
 
         // Metric rows with labels and bars
         const addMetricBar = (label, value, thresholds, maxVal) => {
