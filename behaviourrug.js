@@ -529,8 +529,14 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
   const baseColor = VISUALIZATION_CONFIG.baseGlyphColor || "#164773";
   const mixToWhite = (t) => d3.interpolateRgb("#ffffff", baseColor)(t);
   const SPEED_LEVELS = ["Muito_Lento", "Lento", "Medio", "Rapido", "Muito_Rapido"];
-  const SPEED_T = { Muito_Lento: 0.2, Lento: 0.4, Medio: 0.6, Rapido: 0.8, Muito_Rapido: 1.0 };
-  const colorForSpeed = (speed) => mixToWhite(SPEED_T[speed] ?? 0.60);
+  const SPEED_COLORS = {
+    Muito_Lento: "#1666a2",
+    Lento: "#7ab8cd",
+    Medio: "#a7d991",
+    Rapido: "#fdae61",
+    Muito_Rapido: "#d7191c"
+  };
+  const colorForSpeed = (speed) => SPEED_COLORS[speed] ?? "#ffffbf";
 
   function highlightRow(id) {
     selectedTrajectoryId = id;
