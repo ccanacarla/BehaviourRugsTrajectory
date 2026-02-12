@@ -45,7 +45,7 @@ export function drawTSNE(data, containerSelector) {
         .style("align-items", "center");
 
     const modes = [
-        { id: 'symbolic', label: 'Movement Symbolic' },
+        { id: 'symbolic', label: 'Symbolic Movement' },
         { id: 'physical', label: 'Metrics' }
     ];
 

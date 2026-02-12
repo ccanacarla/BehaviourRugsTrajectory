@@ -41,28 +41,28 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
   // Initialize state from external config if available
   // activeMotifs.custom is now an Array of Motif Objects: { id, name, color, pattern }
   let activeMotifs = config?.activeMotifs ? { ...config.activeMotifs } : { custom: [] };
-  
+
   // Ensure backward compatibility or initialization
   if (!Array.isArray(activeMotifs.custom)) {
-     // If it was the old single object style, convert or reset? 
-     // For safety, let's reset or try to migrate if it has data.
-     if (typeof activeMotifs.custom === 'object' && activeMotifs.custom.some && activeMotifs.custom.some(p => p.speed || p.dir)) {
-         activeMotifs.custom = [{
-             id: Date.now(),
-             name: activeMotifs.customName || "Legacy Motif",
-             color: activeMotifs.customColor || "#16a085",
-             pattern: activeMotifs.custom
-         }];
-     } else {
-         activeMotifs.custom = [];
-     }
+    // If it was the old single object style, convert or reset? 
+    // For safety, let's reset or try to migrate if it has data.
+    if (typeof activeMotifs.custom === 'object' && activeMotifs.custom.some && activeMotifs.custom.some(p => p.speed || p.dir)) {
+      activeMotifs.custom = [{
+        id: Date.now(),
+        name: activeMotifs.customName || "Legacy Motif",
+        color: activeMotifs.customColor || "#16a085",
+        pattern: activeMotifs.custom
+      }];
+    } else {
+      activeMotifs.custom = [];
+    }
   }
 
   // Builder State (for the "Create New" form)
   let builderState = {
-      name: "New Motif",
-      color: "#e74c3c", // Default red-ish
-      pattern: [{}, {}, {}]
+    name: "New Motif",
+    color: "#e74c3c", // Default red-ish
+    pattern: [{}, {}, {}]
   };
 
   // ==================================================
@@ -179,35 +179,35 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
       render();
     });
 
-  
 
 
-    /*
-  controlsDiv.append("span")
-    .style("font-weight", "bold")
-    .text("Smoothing:");
 
-  const radioGroup = controlsDiv.append("div")
-    .attr("class", "rug-radio-group");
+  /*
+controlsDiv.append("span")
+  .style("font-weight", "bold")
+  .text("Smoothing:");
+
+const radioGroup = controlsDiv.append("div")
+  .attr("class", "rug-radio-group");
 
 
-  smoothingCols.forEach(key => {
-    const levelNum = key.split('_')[2];
-    const label = radioGroup.append("label");
+smoothingCols.forEach(key => {
+  const levelNum = key.split('_')[2];
+  const label = radioGroup.append("label");
 
-    const input = label.append("input")
-      .attr("type", "radio").attr("name", "rug_smoothing").attr("value", key)
-      .property("checked", key === currentKey);
+  const input = label.append("input")
+    .attr("type", "radio").attr("name", "rug_smoothing").attr("value", key)
+    .property("checked", key === currentKey);
 
-    input.on("change", function () {
-      if (this.checked) {
-        currentKey = this.value;
-        notifyMotifConfig();
-        render();
-      }
-    });
-    label.append("span").text(levelNum);
+  input.on("change", function () {
+    if (this.checked) {
+      currentKey = this.value;
+      notifyMotifConfig();
+      render();
+    }
   });
+  label.append("span").text(levelNum);
+});
 */
   controlsDiv.append("div").style("width", "1px").style("height", "20px").style("background", "#ccc").style("margin", "0 10px");
 
@@ -279,59 +279,60 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
     .text("Custom Motif Builder (max 3 steps):");
 
   const speeds = ["Muito_Lento", "Lento", "Medio", "Rapido", "Muito_Rapido"];
+  const speeds_en = ["Very Slow", "Slow", "Medium", "Fast", "Very Fast"];
   const directions = ["N", "E", "S", "W"];
 
   function updateMotifUI() {
     motifBuilder.selectAll("*").remove();
-    
+
     // --- PART 1: Active Motifs List ---
     if (activeMotifs.custom.length > 0) {
-        motifBuilder.append("div")
-            .style("font-size", "11px")
-            .style("font-weight", "bold")
-            .style("margin-bottom", "5px")
-            .text("Active Custom Motifs:");
-            
-        activeMotifs.custom.forEach((m, idx) => {
-            const row = motifBuilder.append("div")
-                .style("display", "flex")
-                .style("align-items", "center")
-                .style("justify-content", "space-between")
-                .style("background", "#f9f9f9")
-                .style("border", "1px solid #eee")
-                .style("padding", "4px")
-                .style("margin-bottom", "4px")
-                .style("border-radius", "4px");
-            
-            const info = row.append("div").style("display", "flex").style("align-items", "center").style("gap", "6px");
-            
-            info.append("div")
-                .style("width", "12px").style("height", "12px")
-                .style("background", m.color)
-                .style("border-radius", "2px");
-                
-            info.append("span").style("font-size", "11px").text(m.name);
-            
-            row.append("span")
-                .attr("class", "motif-clear-btn")
-                .text("Delete")
-                .on("click", () => {
-                    activeMotifs.custom.splice(idx, 1);
-                    updateMotifUI();
-                    notifyMotifConfig();
-                    render();
-                });
-        });
-        
-        motifBuilder.append("hr").style("border", "0").style("border-top", "1px solid #eee").style("margin", "8px 0");
+      motifBuilder.append("div")
+        .style("font-size", "11px")
+        .style("font-weight", "bold")
+        .style("margin-bottom", "5px")
+        .text("Active Custom Motifs:");
+
+      activeMotifs.custom.forEach((m, idx) => {
+        const row = motifBuilder.append("div")
+          .style("display", "flex")
+          .style("align-items", "center")
+          .style("justify-content", "space-between")
+          .style("background", "#f9f9f9")
+          .style("border", "1px solid #eee")
+          .style("padding", "4px")
+          .style("margin-bottom", "4px")
+          .style("border-radius", "4px");
+
+        const info = row.append("div").style("display", "flex").style("align-items", "center").style("gap", "6px");
+
+        info.append("div")
+          .style("width", "12px").style("height", "12px")
+          .style("background", m.color)
+          .style("border-radius", "2px");
+
+        info.append("span").style("font-size", "11px").text(m.name);
+
+        row.append("span")
+          .attr("class", "motif-clear-btn")
+          .text("Delete")
+          .on("click", () => {
+            activeMotifs.custom.splice(idx, 1);
+            updateMotifUI();
+            notifyMotifConfig();
+            render();
+          });
+      });
+
+      motifBuilder.append("hr").style("border", "0").style("border-top", "1px solid #eee").style("margin", "8px 0");
     }
 
     // --- PART 2: Builder ---
     motifBuilder.append("div")
-        .style("font-size", "11px")
-        .style("font-weight", "bold")
-        .style("margin-bottom", "5px")
-        .text("Create New Motif:");
+      .style("font-size", "11px")
+      .style("font-weight", "bold")
+      .style("margin-bottom", "5px")
+      .text("Create New Motif:");
 
     const settingsDiv = motifBuilder.append("div")
       .attr("class", "motif-custom-settings")
@@ -346,7 +347,7 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
       .attr("class", "dropdown-toggle")
       .style("width", "90px")
       .property("value", builderState.name)
-      .on("input", function() {
+      .on("input", function () {
         builderState.name = this.value;
       });
 
@@ -359,7 +360,7 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
       .style("height", "25px")
       .style("cursor", "pointer")
       .property("value", builderState.color)
-      .on("input", function() {
+      .on("input", function () {
         builderState.color = this.value;
       });
 
@@ -390,9 +391,9 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
       speeds.forEach(s => {
         speedGroup.append("button")
           .attr("class", `motif-btn ${step.speed === s ? "active" : ""}`)
-          .text(s.replace("_", " "))
-          .on("mouseover", function() { d3.select(this).style("color", "black"); })
-          .on("mouseout", function() { d3.select(this).style("color", null); })
+          .text(speeds_en[speeds.indexOf(s)])
+          .on("mouseover", function () { d3.select(this).style("color", "black"); })
+          .on("mouseout", function () { d3.select(this).style("color", null); })
           .on("click", () => {
             step.speed = (step.speed === s) ? null : s;
             updateMotifUI();
@@ -405,8 +406,8 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
         dirGroup.append("button")
           .attr("class", `motif-btn ${step.dir === d ? "active" : ""}`)
           .text(d)
-          .on("mouseover", function() { d3.select(this); })
-          .on("mouseout", function() { d3.select(this).style("color", null); })
+          .on("mouseover", function () { d3.select(this); })
+          .on("mouseout", function () { d3.select(this).style("color", null); })
           .on("click", () => {
             step.dir = (step.dir === d) ? null : d;
             updateMotifUI();
@@ -427,20 +428,20 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
       .text("Add Motif to List")
       .on("click", () => {
         if (!isBuilderValid) return;
-        
+
         // Add to active motifs
         activeMotifs.custom.push({
-            id: Date.now(),
-            name: builderState.name || "Custom Motif",
-            color: builderState.color,
-            pattern: JSON.parse(JSON.stringify(builderState.pattern)) // Deep copy
+          id: Date.now(),
+          name: builderState.name || "Custom Motif",
+          color: builderState.color,
+          pattern: JSON.parse(JSON.stringify(builderState.pattern)) // Deep copy
         });
-        
+
         // Reset builder
         builderState.name = "New Motif";
         builderState.pattern = [{}, {}, {}];
         // Keep color or randomize? Let's randomize slightly or keep same
-        
+
         updateMotifUI();
         notifyMotifConfig();
         render();
@@ -469,26 +470,26 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
 
   // Interaction Mode Button
   controlsDiv.append("button")
-      .attr("class", "dropdown-toggle")
-      .style("margin-left", "10px")
-      .text("Frame Interval: OFF")
-      .on("click", function() {
-          interactionMode = !interactionMode;
-          d3.select(this).text(`Frame Interval: ${interactionMode ? "ON" : "OFF"}`);
-          d3.select(this)
-            .style("background", interactionMode ? "#8e44ad" : null)
-            .style("color", interactionMode ? "white" : null);
-          
-          // Reset state when toggling
-          selectionState = { step: 0, trajectoryId: null, startIndex: null, endIndex: null };
-          
-          // Clear visuals
-          centerSvg.selectAll(".frame-selected-start").classed("frame-selected-start", false);
-          centerSvg.selectAll(".frame-selected-interval").classed("frame-selected-interval", false);
-          eventManager.notify('FRAME_SELECT_TRAJECTORY', null); // Notify reset
+    .attr("class", "dropdown-toggle")
+    .style("margin-left", "10px")
+    .text("Frame Interval: OFF")
+    .on("click", function () {
+      interactionMode = !interactionMode;
+      d3.select(this).text(`Frame Interval: ${interactionMode ? "ON" : "OFF"}`);
+      d3.select(this)
+        .style("background", interactionMode ? "#8e44ad" : null)
+        .style("color", interactionMode ? "white" : null);
 
-          console.log(`Interaction Mode: ${interactionMode ? "ON" : "OFF"}`);
-      });
+      // Reset state when toggling
+      selectionState = { step: 0, trajectoryId: null, startIndex: null, endIndex: null };
+
+      // Clear visuals
+      centerSvg.selectAll(".frame-selected-start").classed("frame-selected-start", false);
+      centerSvg.selectAll(".frame-selected-interval").classed("frame-selected-interval", false);
+      eventManager.notify('FRAME_SELECT_TRAJECTORY', null); // Notify reset
+
+      console.log(`Interaction Mode: ${interactionMode ? "ON" : "OFF"}`);
+    });
 
   const legendLabel = controlsDiv.append("label")
     .attr("class", "rug-legend-toggle");
@@ -555,7 +556,7 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
       const allMatches = getAllCustomMotifIndices(datum.seq, activeMotifs.custom);
       console.log(datum.seq, activeMotifs.custom);
       console.log(allMatches);
-      
+
       eventManager.notify('TRAJECTORY_SELECTED', {
         trajectory: datum,
         options: {
@@ -719,11 +720,11 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
           const el = d3.select(this);
 
           // Interaction Mode Handler
-          el.on("click", function(event) {
+          el.on("click", function (event) {
             if (!interactionMode) return; // Allow bubbling to row if not in interaction mode
 
             event.stopPropagation();
-            
+
             const startFrameOffset = parseInt(rowData.raw.frame_inicial) || 0;
 
             if (selectionState.step === 0) {
@@ -731,28 +732,28 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
               selectionState.trajectoryId = rowData.id;
               selectionState.startIndex = i;
               selectionState.step = 1;
-              
+
               // Visual feedback for start frame
               d3.select(this).classed("frame-selected-start", true);
 
               eventManager.notify('FRAME_SELECT_TRAJECTORY', {
-                  trajectoryId: rowData.id,
-                  user_id: rowData.user_id,
-                  startFrame: startFrameOffset + i,
-                  endFrame: null,
-                  startIndex: i,
-                  endIndex: null
+                trajectoryId: rowData.id,
+                user_id: rowData.user_id,
+                startFrame: startFrameOffset + i,
+                endFrame: null,
+                startIndex: i,
+                endIndex: null
               });
 
               console.log(`[Interaction] Start selected at index ${i} (Frame ${startFrameOffset + i}) for Trajectory ${rowData.id}`);
             } else if (selectionState.step === 1) {
               // 2nd Click: End
               if (selectionState.trajectoryId !== rowData.id) {
-                 console.warn("[Interaction] Selected a different trajectory. Resetting selection.");
-                 // Clear visuals
-                 centerSvg.selectAll(".frame-selected-start").classed("frame-selected-start", false);
-                 selectionState = { step: 0, trajectoryId: null, startIndex: null, endIndex: null };
-                 return;
+                console.warn("[Interaction] Selected a different trajectory. Resetting selection.");
+                // Clear visuals
+                centerSvg.selectAll(".frame-selected-start").classed("frame-selected-start", false);
+                selectionState = { step: 0, trajectoryId: null, startIndex: null, endIndex: null };
+                return;
               }
 
               selectionState.endIndex = i;
@@ -763,7 +764,7 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
 
               const fStart = startFrameOffset + fStartIdx;
               const fEnd = startFrameOffset + fEndIdx;
-              
+
               // Visual feedback for interval
               d3.select(this.parentNode.parentNode).selectAll(".g-cell rect")
                 .filter((d, idx) => idx >= fStartIdx && idx <= fEndIdx)
@@ -773,18 +774,18 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
               console.log(`Trajectory Frame Interval: ${fStart} - ${fEnd}`);
 
               eventManager.notify('FRAME_SELECT_TRAJECTORY', {
-                  trajectoryId: rowData.id,
-                  user_id: rowData.user_id,
-                  startFrame: fStart,
-                  endFrame: fEnd,
-                  startIndex: fStartIdx,
-                  endIndex: fEndIdx
+                trajectoryId: rowData.id,
+                user_id: rowData.user_id,
+                startFrame: fStart,
+                endFrame: fEnd,
+                startIndex: fStartIdx,
+                endIndex: fEndIdx
               });
 
             } else {
               // 3rd Click: Reset
               selectionState = { step: 0, trajectoryId: null, startIndex: null, endIndex: null };
-              
+
               // Clear visuals
               centerSvg.selectAll(".frame-selected-start").classed("frame-selected-start", false);
               centerSvg.selectAll(".frame-selected-interval").classed("frame-selected-interval", false);

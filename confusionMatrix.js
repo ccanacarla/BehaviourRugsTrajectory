@@ -101,7 +101,7 @@ export function drawConfusionMatrix(data, containerSelector, fullData = null, ac
         .attr("y", innerHeight + 30)
         .style("text-anchor", "middle")
         .style("font-size", "10px")
-        .text("Cluster - Qualitative");
+        .text("Cluster - Metrics");
 
     // Y Axis
     svg.append("g")
@@ -114,7 +114,7 @@ export function drawConfusionMatrix(data, containerSelector, fullData = null, ac
         .attr("x", -innerHeight / 2)
         .style("text-anchor", "middle")
         .style("font-size", "10px")
-        .text("Cluster Symbolic - Qualitative");
+        .text("Cluster - Symbolic Movement");
 
     // Cells
     const cells = svg.selectAll(".cell")
