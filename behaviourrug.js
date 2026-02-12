@@ -78,7 +78,7 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
 
   let currentKey = config?.column || smoothingCols[0];
 
-  let currentSort = "cluster"; // cluster, duration, distance
+  let currentSort = "shannon_entropy"; // shannon_entropy, cluster, duration, distance
   let sortDirection = "asc"; // asc, desc
 
   const sortedData = data.slice().sort((a, b) => {
@@ -161,6 +161,7 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
   sortOptions.forEach(opt => {
     sortSelect.append("option")
       .attr("value", opt.value)
+      .property("selected", opt.value === currentSort)
       .text(opt.label);
 
   });
