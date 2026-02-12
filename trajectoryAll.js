@@ -103,7 +103,7 @@ export function drawTrajectoryView(data, containerSelector, opts = {}) {
   // ==================================================
   const width = 280;
   const height = 170;
-  const margin = { top: 0, right: 20, bottom: 30, left: 45 };
+  const margin = { top: 0, right: 10, bottom: 10, left: 10 };
 
   const svg = wrapper.append("svg")
     .attr("width", "100%")
@@ -185,8 +185,8 @@ export function drawTrajectoryView(data, containerSelector, opts = {}) {
       .x(p => xScale(p[0]))
       .y(p => yScale(p[1]));
 
-    xAxisG.call(d3.axisBottom(xScale).ticks(5));
-    yAxisG.call(d3.axisLeft(yScale).ticks(5));
+    //xAxisG.call(d3.axisBottom(xScale).ticks(5));
+    //yAxisG.call(d3.axisLeft(yScale).ticks(5));
 
     // Bind data to paths
     const paths = pathsGroup.selectAll(".traj-path")
@@ -236,8 +236,8 @@ export function drawTrajectoryView(data, containerSelector, opts = {}) {
         const newX = event.transform.rescaleX(xScale);
         const newY = event.transform.rescaleY(yScale);
 
-        xAxisG.call(d3.axisBottom(newX).ticks(5));
-        yAxisG.call(d3.axisLeft(newY).ticks(5));
+        //xAxisG.call(d3.axisBottom(newX).ticks(5));
+        //yAxisG.call(d3.axisLeft(newY).ticks(5));
 
         const newLine = d3.line()
           .x(p => newX(p[0]))
