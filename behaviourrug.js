@@ -531,11 +531,11 @@ smoothingCols.forEach(key => {
   const mixToWhite = (t) => d3.interpolateRgb("#ffffff", baseColor)(t);
   const SPEED_LEVELS = ["Muito_Lento", "Lento", "Medio", "Rapido", "Muito_Rapido"];
   const SPEED_COLORS = {
-    Muito_Lento: "#1666a2",
-    Lento: "#7ab8cd",
-    Medio: "#a7d991",
-    Rapido: "#fdae61",
-    Muito_Rapido: "#d7191c"
+    Muito_Lento: "#29558f",
+    Lento: "#569fcc",
+    Medio: "#81d28d",
+    Rapido: "#fcb359",
+    Muito_Rapido: "#d73027"
   };
   const colorForSpeed = (speed) => SPEED_COLORS[speed] ?? "#ffffbf";
 

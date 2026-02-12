@@ -295,11 +295,13 @@ position: absolute;
    SELEÇÃO & HOVER
 ========================================================= */
 .row-hover rect {
-    fill: rgba(42, 143, 244, 0.2);
+    fill: rgb(251, 251, 162);
+    stroke:#c3c606;
 }
 
 .row-selected rect {
-    fill: rgba(46, 204, 113, 0.27);
+    fill: rgb(166, 167, 166);
+    stroke:#5d5d5d;
 }
 
 .l-row.selected text {
