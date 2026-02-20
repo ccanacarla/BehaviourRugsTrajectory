@@ -406,7 +406,7 @@ smoothingCols.forEach(key => {
         dirGroup.append("button")
           .attr("class", `motif-btn ${step.dir === d ? "active" : ""}`)
           .text(d)
-          .on("mouseover", function () { d3.select(this); })
+          .on("mouseover", function () { d3.select(this).style("color", "black"); })
           .on("mouseout", function () { d3.select(this).style("color", null); })
           .on("click", () => {
             step.dir = (step.dir === d) ? null : d;
