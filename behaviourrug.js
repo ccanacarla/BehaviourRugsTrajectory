@@ -118,8 +118,8 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
       distance,
       duration,
       shannon_entropy: d.shannon_entropy,
-      avg_dwell_time: d.avg_dwell_time,
-      high_speed_ratio: d.high_speed_ratio
+      avg_dwell_time: d.avg_dwell_time
+      //high_speed_ratio: d.high_speed_ratio
     };
   });
 
@@ -153,8 +153,8 @@ export function drawBehaviorRug(data, containerSelector, config = null) {
     { label: "Duration", value: "duration" },
     { label: "Distance", value: "distance" },
     { label: "Shannon Entropy", value: "shannon_entropy" },
-    { label: "Avg Dwell Time", value: "avg_dwell_time" },
-    { label: "High Speed Ratio", value: "high_speed_ratio" }
+    { label: "Avg Dwell Time", value: "avg_dwell_time" }
+    //{ label: "High Speed Ratio", value: "high_speed_ratio" }
   ];
 
 
@@ -586,9 +586,10 @@ smoothingCols.forEach(key => {
       sequences.sort((a, b) => (d3.ascending(+a.shannon_entropy, +b.shannon_entropy) * multiplier) || d3.ascending(a.cluster, b.cluster));
     } else if (currentSort === "avg_dwell_time") {
       sequences.sort((a, b) => (d3.ascending(+a.avg_dwell_time, +b.avg_dwell_time) * multiplier) || d3.ascending(a.cluster, b.cluster));
-    } else if (currentSort === "high_speed_ratio") {
+    /*} 
+    else if (currentSort === "high_speed_ratio") {
       sequences.sort((a, b) => (d3.ascending(+a.high_speed_ratio, +b.high_speed_ratio) * multiplier) || d3.ascending(a.cluster, b.cluster));
-    } else {
+    */} else {
       sequences.sort((a, b) => (d3.ascending(parseInt(a.cluster), parseInt(b.cluster)) * multiplier) || d3.ascending(a.id, b.id));
     }
 
