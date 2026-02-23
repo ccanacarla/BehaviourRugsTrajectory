@@ -847,7 +847,7 @@ smoothingCols.forEach(key => {
     SPEED_LEVELS.forEach((s, i) => {
       const rowY = i * 20;
       gSpeed.append("rect").attr("x", 0).attr("y", rowY).attr("width", 16).attr("height", 16).attr("fill", colorForSpeed(s)).attr("stroke", "#999").attr("stroke-width", 0.2);
-      gSpeed.append("text").attr("x", 25).attr("y", rowY + 8).attr("dy", ".35em").attr("font-size", 10).text(s);
+      gSpeed.append("text").attr("x", 25).attr("y", rowY + 8).attr("dy", ".35em").attr("font-size", 10).text(speeds_en[i]);
     });
   }
 
