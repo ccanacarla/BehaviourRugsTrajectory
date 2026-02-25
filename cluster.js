@@ -3,7 +3,7 @@ import { eventManager } from './events.js';
 import { parseTrajectoryData, calculateStraightLineDistance } from './dataUtils.js';
 
 /**
- * Draws the cluster matrices (Markov transition probabilities) and summary statistics.
+ * Draws the cluster summaries including state-frequency glyphs and summary statistics.
  * @param {Array} data - The dataset to visualize (filtered or full).
  * @param {String} containerSelector - The DOM selector for the container.
  * @param {Array} [activeClusterIds=null] - List of currently selected cluster IDs.
@@ -21,60 +21,50 @@ export function drawclusterMatrices(data, containerSelector, activeClusterIds = 
         .style("gap", "12px")
         .style("justify-content", "center")
         .style("padding", "10px");
-
     // ==================================================
-    // 1. Definição do Espaço de Estados
+    // 1. Helpers for Frequency Glyph
     // ==================================================
-    const speeds = ["Parado", "Lento", "Medio", "Rapido"];
-    const directions = ["N", "E", "S", "W"];
-    const states = [];
+    const size = VISUALIZATION_CONFIG.frenquencyGlyph.glyphSize || 80;
+    const half = size / 2;
+    const step = half / (VISUALIZATION_CONFIG.frenquencyGlyph.glyphLevels || 5);
+    const baseColorGlyph = "#050505ff";
 
-    speeds.forEach(s => {
-        if (s === "Parado") {
-            states.push("Parado");
-        } else {
-            directions.forEach(d => {
-                states.push(`${s}_${d}`);
-            });
-        }
-    });
+    function getRegionPath(direction, level) {
+        const innerR = level * step;
+        const outerR = (level + 1) * step;
 
-    const stateToIdx = {};
-    states.forEach((s, i) => stateToIdx[s] = i);
-    const nStates = states.length;
+        if (direction === 0) return `M${-innerR},${-innerR} L${innerR},${-innerR} L${outerR},${-outerR} L${-outerR},${-outerR} Z`; // N
+        if (direction === 1) return `M${innerR},${-innerR} L${innerR},${innerR} L${outerR},${outerR} L${outerR},${-outerR} Z`; // E
+        if (direction === 2) return `M${innerR},${innerR} L${-innerR},${innerR} L${-outerR},${outerR} L${outerR},${outerR} Z`; // S
+        if (direction === 3) return `M${-innerR},${innerR} L${-innerR},${-innerR} L${-outerR},${-outerR} L${-outerR},${outerR} Z`; // W
+        return "";
+    }
 
-    // ==================================================
-    // 2. Normalização de Tokens (Parser)
-    // ==================================================
-    function normalizeToken(token) {
+    function normalizeTokenForFreq(token) {
         if (!token) return null;
         const t = token.normalize("NFD").replace(/[̀-ͯ]/g, "");
 
-        let s = null;
-        if (t.includes("Parado")) s = "Parado";
-        else if (t.includes("Muito_Lento") || t.includes("Muito-Lento")) s = "Lento";
-        else if (t.includes("Lento")) s = "Lento";
-        else if (t.includes("Medio")) s = "Medio";
-        else if (t.includes("Muito_Rapido") || t.includes("Muito-Rapido")) s = "Rapido";
-        else if (t.includes("Rapido") || t.includes("apido")) s = "Rapido";
+        let spVal = -1;
+        if (t.includes("Muito_Lento")) spVal = 0;
+        else if (t.includes("Muito_Rapido")) spVal = 4;
+        else if (t.includes("Lento")) spVal = 1;
+        else if (t.includes("Medio")) spVal = 2;
+        else if (t.includes("Rapido")) spVal = 3;
 
-        if (!s) return null;
-        if (s === "Parado") return "Parado";
+        let dirVal = -1;
+        if (t.includes("Norte") || t.includes("_N")) dirVal = 0;
+        else if (t.includes("Leste") || t.includes("East") || t.includes("_E") || t.includes("_L")) dirVal = 1;
+        else if (t.includes("Sul") || t.includes("_S")) dirVal = 2;
+        else if (t.includes("Oeste") || t.includes("West") || t.includes("_W") || t.includes("_O")) dirVal = 3;
 
-        let d = null;
-        if (t.includes("Norte") || t.includes("_N")) d = "N";
-        else if (t.includes("Leste") || t.includes("East") || t.includes("_E") || t.includes("_L")) d = "E";
-        else if (t.includes("Sul") || t.includes("_S")) d = "S";
-        else if (t.includes("Oeste") || t.includes("West") || t.includes("_W") || t.includes("_O")) d = "W";
-
-        if (s && d) return `${s}_${d}`;
+        if (spVal > -1 && dirVal > -1) return `${spVal}_${dirVal}`;
         return null;
     }
 
     // ==================================================
     // 3. Processamento dos Dados
     // ==================================================
-    
+
     // Global Analysis for Metric Reference (Quintiles)
     const sourceData = fullData || data;
     const globalMetrics = {
@@ -88,11 +78,11 @@ export function drawclusterMatrices(data, containerSelector, activeClusterIds = 
         const s = parseFloat(d.high_speed_ratio || 0);
         const e = parseFloat(d.shannon_entropy || 0);
         const dw = parseFloat(d.avg_dwell_time || 0);
-        
+
         if (!isNaN(s)) globalMetrics.speed.push(s);
         if (!isNaN(e)) globalMetrics.entropy.push(e);
         if (!isNaN(dw)) globalMetrics.dwell.push(dw);
-        
+
         // Distance needs parsing
         const pts = parseTrajectoryData(d.trajectory_xy);
         const dist = calculateStraightLineDistance(pts);
@@ -130,9 +120,11 @@ export function drawclusterMatrices(data, containerSelector, activeClusterIds = 
             let valid = 0;
             rows.forEach(r => {
                 try {
-                   const raw = JSON.parse((r.movement_list || r.simbolic_movement || "[]").replace(/'/g, '"'));
-                   if(Array.isArray(raw) && raw.length >= 2) valid++;
-                } catch(e){}
+                    const rawStr = r.movement_list || r.simbolic_movement || "[]";
+                    const jsonStr = rawStr.replace(/'/g, '"');
+                    const raw = JSON.parse(jsonStr);
+                    if (Array.isArray(raw) && raw.length >= 2) valid++;
+                } catch (e) { }
             });
             totalCounts[cid] = valid;
             globalTotal += valid;
@@ -145,15 +137,17 @@ export function drawclusterMatrices(data, containerSelector, activeClusterIds = 
     const clusterResults = [];
 
     // Determine all possible cluster IDs to ensure they all appear in the panel
-    const allClusterIds = fullData 
+    const allClusterIds = fullData
         ? Array.from(new Set(fullData.map(getCId))).filter(d => d !== null && d !== undefined && d !== "")
         : Array.from(clustersMap.keys()).filter(d => d !== null && d !== undefined && d !== "");
 
     allClusterIds.forEach(clusterId => {
         const trajectories = clustersMap.get(clusterId) || [];
-        const sumMatrix = Array(nStates).fill(0).map(() => Array(nStates).fill(0));
+
+        // Sum of state frequencies (proportions)
+        const sumFreqs = {};
         let validTrajCount = 0;
-        
+
         // Sums for averages
         let sumSpeed = 0;
         let sumDistance = 0;
@@ -166,8 +160,7 @@ export function drawclusterMatrices(data, containerSelector, activeClusterIds = 
             const speed = parseFloat(traj.high_speed_ratio || 0);
             const entropy = parseFloat(traj.shannon_entropy || 0);
             const dwell = parseFloat(traj.avg_dwell_time || 0);
-            
-            // Calculate distance on the fly if needed
+
             const points = parseTrajectoryData(traj.trajectory_xy);
             const dist = calculateStraightLineDistance(points);
 
@@ -179,7 +172,7 @@ export function drawclusterMatrices(data, containerSelector, activeClusterIds = 
                 countMetrics++;
             }
 
-            // Matrix Calculation
+            // Frequency Calculation
             let seqRaw = [];
             try {
                 const rawStr = traj.movement_list || traj.simbolic_movement || "[]";
@@ -189,43 +182,37 @@ export function drawclusterMatrices(data, containerSelector, activeClusterIds = 
                 return;
             }
 
-            if (!Array.isArray(seqRaw) || seqRaw.length < 2) return;
+            if (!Array.isArray(seqRaw) || seqRaw.length < 1) return;
 
-            const seqIndices = seqRaw.map(token => {
-                const key = normalizeToken(token);
-                return stateToIdx[key];
-            }).filter(idx => idx !== undefined);
+            const trajCounts = {};
+            let trajValidStates = 0;
 
-            if (seqIndices.length < 2) return;
-
-            const countMatrix = Array(nStates).fill(0).map(() => Array(nStates).fill(0));
-            for (let i = 0; i < seqIndices.length - 1; i++) {
-                const curr = seqIndices[i];
-                const next = seqIndices[i + 1];
-                countMatrix[curr][next] += 1;
-            }
-
-            for (let r = 0; r < nStates; r++) {
-                const rowSum = d3.sum(countMatrix[r]);
-                if (rowSum > 0) {
-                    for (let c = 0; c < nStates; c++) {
-                        sumMatrix[r][c] += (countMatrix[r][c] / rowSum);
-                    }
+            seqRaw.forEach(token => {
+                const key = normalizeTokenForFreq(token);
+                if (key) {
+                    trajCounts[key] = (trajCounts[key] || 0) + 1;
+                    trajValidStates++;
                 }
+            });
+
+            if (trajValidStates > 0) {
+                for (const key in trajCounts) {
+                    sumFreqs[key] = (sumFreqs[key] || 0) + (trajCounts[key] / trajValidStates);
+                }
+                validTrajCount++;
             }
-            validTrajCount++;
         });
 
-        const avgMatrix = Array(nStates).fill(0).map(() => Array(nStates).fill(0));
+        // Compute Averages
+        const avgFreqs = {};
+        let maxAvgFreq = 0;
         if (validTrajCount > 0) {
-            for (let r = 0; r < nStates; r++) {
-                for (let c = 0; c < nStates; c++) {
-                    avgMatrix[r][c] = sumMatrix[r][c] / validTrajCount;
-                }
+            for (const key in sumFreqs) {
+                avgFreqs[key] = sumFreqs[key] / validTrajCount;
+                maxAvgFreq = Math.max(maxAvgFreq, avgFreqs[key]);
             }
         }
 
-        // Compute Cluster Averages
         const avgSpeed = countMetrics > 0 ? sumSpeed / countMetrics : 0;
         const avgDistance = countMetrics > 0 ? sumDistance / countMetrics : 0;
         const avgEntropy = countMetrics > 0 ? sumEntropy / countMetrics : 0;
@@ -233,7 +220,8 @@ export function drawclusterMatrices(data, containerSelector, activeClusterIds = 
 
         clusterResults.push({
             id: clusterId,
-            matrix: avgMatrix,
+            freqs: avgFreqs,
+            maxFreq: maxAvgFreq,
             count: validTrajCount,
             total: totalCounts[clusterId] || validTrajCount,
             metrics: {
@@ -250,15 +238,6 @@ export function drawclusterMatrices(data, containerSelector, activeClusterIds = 
     // ==================================================
     // 4. Renderização
     // ==================================================
-    const cellSize = 5;
-    const margin = { top: 5, right: 5, bottom: 5, left: 5 };
-    const width = nStates * cellSize;
-    const height = nStates * cellSize;
-
-    const baseColor = VISUALIZATION_CONFIG.baseGlyphColor || "#022fab";
-    const heatmapColorScale = d3.scaleSequential(t => d3.interpolateRgb("#ffffff", baseColor)(t))
-        .domain([0, 1]);
-
     const selectedSet = new Set((activeClusterIds || []).map(String));
 
     if (clusterResults.length === 0) {
@@ -270,7 +249,7 @@ export function drawclusterMatrices(data, containerSelector, activeClusterIds = 
         return;
     }
 
-    // Helper to generate compact progress bar with value and score using quintile thresholds
+    // Helper to generate compact progress bar
     function createMetricBar(container, value, thresholds, maxValue) {
         const barContainer = container.append("div")
             .style("display", "flex")
@@ -278,18 +257,9 @@ export function drawclusterMatrices(data, containerSelector, activeClusterIds = 
             .style("align-items", "center")
             .style("gap", "4px")
             .style("flex", "1");
-        
-        // Calculate score (1-5)
-        let score = 1;
-        if (value > thresholds[3]) score = 5;
-        else if (value > thresholds[2]) score = 4;
-        else if (value > thresholds[1]) score = 3;
-        else if (value > thresholds[0]) score = 2;
-        
-        // Color: solid blue (no variation)
+
         const barColor = "#999";
-        
-        // Progress bar
+
         const barWrapper = barContainer.append("div")
             .style("flex", "0 1 35px")
             .style("min-width", "25px")
@@ -298,7 +268,7 @@ export function drawclusterMatrices(data, containerSelector, activeClusterIds = 
             .style("border-radius", "2px")
             .style("overflow", "hidden")
             .style("position", "relative");
-        
+
         const percentage = maxValue > 0 ? (value / maxValue) * 100 : 0;
         barWrapper.append("div")
             .style("height", "100%")
@@ -306,8 +276,7 @@ export function drawclusterMatrices(data, containerSelector, activeClusterIds = 
             .style("background", barColor)
             .style("transition", "width 0.3s ease")
             .style("border-radius", "2px");
-        
-        // Value label
+
         barContainer.append("div")
             .style("font-size", "8px")
             .style("color", "#888")
@@ -321,18 +290,15 @@ export function drawclusterMatrices(data, containerSelector, activeClusterIds = 
         const cColor = CLUSTER_COLORS[Math.abs(+cId % CLUSTER_COLORS.length)];
         const isSelected = selectedSet.has(String(cId));
         const isDisabled = clusterData.count === 0;
-        
-        // Calculate percentages
-        // 'n' is clusterData.count
-        // '%' is (n / globalTotal) * 100
-        const percentage = globalTotal > 0 
-            ? ((clusterData.count / globalTotal) * 100).toFixed(1) 
+
+        const percentage = globalTotal > 0
+            ? ((clusterData.count / globalTotal) * 100).toFixed(1)
             : "0.0";
 
         const card = wrapper.append("div")
             .attr("data-cluster-id", cId)
             .style("display", "flex")
-            .style("flex-direction", "column") // Top-down layout
+            .style("flex-direction", "column")
             .style("background", isSelected ? d3.color(cColor).copy({ opacity: 0.1 }) : "#fff")
             .style("border", isSelected ? `1px solid ${cColor}` : "1px solid #ddd")
             .style("border-radius", "4px")
@@ -341,7 +307,7 @@ export function drawclusterMatrices(data, containerSelector, activeClusterIds = 
             .style("pointer-events", isDisabled ? "none" : "auto")
             .style("opacity", isDisabled ? 0.4 : 1)
             .style("filter", isDisabled ? "grayscale(80%)" : "none")
-            .style("padding", "0") // Padding moved to internal containers
+            .style("padding", "0")
             .on("click", function () {
                 const newSet = new Set(selectedSet);
                 if (newSet.has(String(cId))) {
@@ -356,7 +322,7 @@ export function drawclusterMatrices(data, containerSelector, activeClusterIds = 
                 });
             });
 
-        // 1. Header (Full Width)
+        // 1. Header
         const header = card.append("div")
             .style("background", d3.color(cColor).copy({ opacity: 0.8 }))
             .style("color", "#333")
@@ -368,7 +334,7 @@ export function drawclusterMatrices(data, containerSelector, activeClusterIds = 
             .style("flex-direction", "column");
 
         header.append("div")
-            .style("font-weight", "bold")            
+            .style("font-weight", "bold")
             .style("font-size", "12px")
             .style("color", "#333")
             .text(`Cluster ${cId}`);
@@ -378,48 +344,83 @@ export function drawclusterMatrices(data, containerSelector, activeClusterIds = 
             .style("opacity", "0.95")
             .text(`n: ${clusterData.count} (${percentage}%)`);
 
-        // 2. Content Row (Matrix & Stats)
+        // 2. Content Row
         const contentRow = card.append("div")
             .style("display", "flex")
             .style("flex-direction", "row")
             .style("padding", "2px");
 
-        // 2a. Left Side: Matrix
+        // 2a. Left Side: Frequency Glyph
         const leftCol = contentRow.append("div")
             .style("display", "flex")
             .style("flex-direction", "column")
             .style("align-items", "center")
             .style("margin-right", "4px");
 
+        const marginGlyph = 0;
+        const glyphScale = 0.7; // <— ajuste aqui (0.5 menor, 0.8 leve redução)
         const svg = leftCol.append("svg")
-            .attr("width", width + margin.left + margin.right)
-            .attr("height", height + margin.top + margin.bottom)
-            .append("g")
-            .attr("transform", `translate(${margin.left},${margin.top})`);
+            .attr("width", size + marginGlyph)
+            .attr("height", size + marginGlyph);
 
-        svg.append("rect")
-            .attr("width", width)
-            .attr("height", height)
-            .attr("fill", "#fafafa")
-            .attr("stroke", "#eee");
+        const g = svg.append("g")
+            .attr("transform",
+                `translate(${size / 2 + marginGlyph / 2}, ${size / 2 + marginGlyph / 2}) scale(${glyphScale})`
+            );
+        g.append("rect")
+            .attr("x", -half).attr("y", -half)
+            .attr("width", size).attr("height", size)
+            .attr("fill", VISUALIZATION_CONFIG.cellBackgroundColor)
+            .attr("stroke", VISUALIZATION_CONFIG.cellBorderColor);
 
-        for (let r = 0; r < nStates; r++) {
-            for (let c = 0; c < nStates; c++) {
-                const prob = clusterData.matrix[r][c];
-                if (prob <= 0.01) continue;
-
-                svg.append("rect")
-                    .attr("x", c * cellSize)
-                    .attr("y", r * cellSize)
-                    .attr("width", cellSize)
-                    .attr("height", cellSize)
-                    .attr("fill", heatmapColorScale(prob))
-                    .append("title")
-                    .text(`${states[r]} → ${states[c]}\nProb: ${(prob * 100).toFixed(1)}%`);
+        // Draw Speed/Direction regions
+        for (let l = 0; l < 5; l++) {
+            for (let dir = 0; dir < 4; dir++) {
+                const freq = clusterData.freqs[`${l}_${dir}`] || 0;
+                if (freq > 0) {
+                    const path = getRegionPath(dir, l);
+                    g.append("path")
+                        .attr("d", path)
+                        .attr("fill", baseColorGlyph)
+                        .attr("opacity", clusterData.maxFreq > 0 ? freq / clusterData.maxFreq : 0)
+                        .append("title").text(`Avg Proportion: ${(freq * 100).toFixed(1)}%`);
+                }
             }
         }
 
-        // 2b. Right Side: Statistics
+        const gridColor = VISUALIZATION_CONFIG.frenquencyGlyph.gridLineColor;
+        const gridW = VISUALIZATION_CONFIG.frenquencyGlyph.gridLineWidth;
+
+        g.append("line").attr("x1", -half).attr("y1", -half).attr("x2", half).attr("y2", half).attr("stroke", gridColor).attr("stroke-width", gridW);
+        g.append("line").attr("x1", half).attr("y1", -half).attr("x2", -half).attr("y2", half).attr("stroke", gridColor).attr("stroke-width", gridW);
+
+        for (let i = 1; i <= 5; i++) {
+            const r = i * step;
+            g.append("rect").attr("x", -r).attr("y", -r).attr("width", r * 2).attr("height", r * 2).attr("fill", "none").attr("stroke", gridColor).attr("stroke-width", gridW);
+        }
+
+        // Labels
+        const labelOffset = half + 5;
+        const labels = [
+            { text: "N", x: 0, y: -labelOffset },
+            { text: "E", x: labelOffset, y: 0 },
+            { text: "S", x: 0, y: labelOffset },
+            { text: "W", x: -labelOffset, y: 0 }
+        ];
+
+        labels.forEach(l => {
+            g.append("text")
+                .attr("x", l.x)
+                .attr("y", l.y)
+                .attr("text-anchor", "middle")
+                .attr("dominant-baseline", "middle")
+                .style("font-size", "10px")
+                .style("fill", "#666")
+                .style("font-weight", "bold")
+                .text(l.text);
+        });
+
+         // 2b. Right Side: Statistics
         const rightCol = contentRow.append("div")
             .style("display", "flex")
             .style("flex-direction", "column")
